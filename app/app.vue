@@ -151,7 +151,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <NuxtPwaManifest />
+  <NuxtPwaManifest/>
   <div class="relative h-full bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 text-white overflow-hidden">
     <div v-if="isLoading || !currentQuestion" class="relative z-10 min-h-screen flex justify-center items-center">
       <div class="text-center">
@@ -189,7 +189,7 @@ onMounted(() => {
           <!-- Header with Progress -->
           <div class="text-center mb-8">
             <div class="inline-flex items-center gap-3 mb-4">
-              <img src="/favicon.svg" class="w-10 h-10" >
+              <img src="/favicon.svg" class="w-10 h-10" alt="sbf trainer icon">
               <h1 class="text-4xl font-bold bg-gradient-to-r from-teal-400 to-teal-400 bg-clip-text text-transparent">
                 SBF Trainer
               </h1>
@@ -262,15 +262,15 @@ onMounted(() => {
                     :disabled="showExplanation"
                     @click="selectAnswer(answer.id)">
 
-  <span class="flex items-start gap-3">
+  <span class="flex items-center gap-3">
     <span
-        class="w-8 h-8 bg-gradient-to-r rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 transition-all duration-300"
+        class="w-8 h-8 shrink-0 bg-gradient-to-r rounded-lg flex items-center justify-center font-bold text-sm"
         :class="{
           // Normal state
           'from-slate-600 to-slate-700 text-slate-300 group-hover:from-teal-500 group-hover:to-teal-600 group-hover:text-white': !showExplanation && selectedAnswer !== answer.id,
 
           // Selected (no explanation)
-          'from-teal-500 to-teal-600 text-white group-hover:animate-pulse': !showExplanation && selectedAnswer === answer.id,
+          'from-teal-500 to-teal-600 text-white': !showExplanation && selectedAnswer === answer.id,
 
           // Correct answer (explanation shown)
           'from-emerald-500 to-emerald-600 text-white': showExplanation && answer.id === currentQuestion.correctAnswer,
