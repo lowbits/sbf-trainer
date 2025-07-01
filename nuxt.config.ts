@@ -9,7 +9,7 @@ export default defineNuxtConfig({
     app: {
         head: {
             meta: [
-                { name: 'theme-color', content: '#0d9488' }
+                { name: 'theme-color', content: '#0f172b' }
             ]
         }
     },
