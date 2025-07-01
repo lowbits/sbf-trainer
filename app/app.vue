@@ -229,7 +229,7 @@ onMounted(() => {
                     {{ currentQuestion.metadata.category }}
                 </span>
                     </div>
-                    <h2 class="text-2xl font-semibold text-slate-100 leading-snug">
+                    <h2 class="text-2xl font-semibold text-slate-100 leading-snug text-pretty">
                       {{ currentQuestion.question }}
                     </h2>
                   </div>
@@ -335,7 +335,7 @@ onMounted(() => {
 
                   <div
                       v-if="showExplanation"
-                      class="mb-8 p-6 bg-red-500/10 border border-red-500/30 rounded-xl backdrop-blur-sm animate-slide-up">
+                      class="my-8 p-6 bg-red-500/10 border border-red-500/30 rounded-xl backdrop-blur-sm animate-slide-up">
                     <div class="flex items-start gap-4">
                       <div class="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                         <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,54 +408,58 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <div
-          v-if="isQuizCompleted"
-          class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 rounded-2xl p-8 max-w-md w-full border border-slate-700 shadow-2xl">
-          <div class="text-center">
-            <!-- Success Icon -->
-            <div class="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
+      <Transition name="modal" appear>
+        <div
+            v-if="isQuizCompleted"
+            class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Transition name="modal-content" appear>
+            <div class="bg-slate-800 rounded-2xl p-8 max-w-md w-full border border-slate-700 shadow-2xl">
+              <div class="text-center">
+                <!-- Success Icon -->
+                <div class="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-8 h-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
 
-            <h2 class="text-2xl font-bold text-white mb-2">Quiz abgeschlossen! 🎉</h2>
-            <p class="text-slate-400 mb-6">Gut gemacht, zukünftiger Kapitän!</p>
+                <h2 class="text-2xl font-bold text-white mb-2">Quiz abgeschlossen! 🎉</h2>
+                <p class="text-slate-400 mb-6">Gut gemacht, zukünftiger Kapitän!</p>
 
-            <!-- Stats -->
-            <div class="bg-slate-700/50 rounded-lg p-4 mb-6 space-y-2">
-              <div class="flex justify-between">
-                <span class="text-slate-300">Richtige Antworten:</span>
-                <span class="text-teal-400 font-bold">{{ correctAnswers }}/{{ settings.questions }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-300">Falsche Antworten:</span>
-                <span class="text-red-400 font-bold">{{ wrongAnswersCount }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-300">Genauigkeit:</span>
-                <span class="text-orange-400 font-bold">{{ accuracy }}%</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-300">Zeit:</span>
-                <span class="text-blue-400 font-bold tabular-nums">{{ elapsedTime }}</span>
+                <!-- Stats -->
+                <div class="bg-slate-700/50 rounded-lg p-4 mb-6 space-y-2">
+                  <div class="flex justify-between">
+                    <span class="text-slate-300">Richtige Antworten:</span>
+                    <span class="text-teal-400 font-bold">{{ correctAnswers }}/{{ settings.questions }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-300">Falsche Antworten:</span>
+                    <span class="text-red-400 font-bold">{{ wrongAnswersCount }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-300">Genauigkeit:</span>
+                    <span class="text-orange-400 font-bold">{{ accuracy }}%</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-300">Zeit:</span>
+                    <span class="text-blue-400 font-bold tabular-nums">{{ elapsedTime }}</span>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="space-y-3">
+                  <button
+                      class="w-full px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+                      @click="restartQuiz">
+                    Neues Quiz starten
+                  </button>
+                </div>
               </div>
             </div>
-
-            <!-- Action Buttons -->
-            <div class="space-y-3">
-              <button
-                  class="w-full px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
-                  @click="restartQuiz">
-                Neues Quiz starten
-              </button>
-            </div>
-          </div>
+          </Transition>
         </div>
-      </div>
+      </Transition>
     </div>
   </div>
 </template>
@@ -466,17 +470,17 @@ onMounted(() => {
 /* Question transition styles */
 .question-enter-active,
 .question-leave-active {
-  transition: all 0.3s ease-in-out;
+  transition: all 0.15s ease-out;
 }
 
 .question-enter-from {
   opacity: 0;
-  transform: translateX(30px);
+  transform: translateX(15px);
 }
 
 .question-leave-to {
   opacity: 0;
-  transform: translateX(-30px);
+  transform: translateX(-15px);
 }
 
 .question-enter-to,
@@ -487,12 +491,12 @@ onMounted(() => {
 
 /* Answer buttons staggered animation */
 .answers-enter-active {
-  transition: all 0.4s ease-out;
+  transition: all 0.2s ease-out;
 }
 
 .answers-enter-from {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(10px);
 }
 
 .answers-enter-to {
@@ -506,14 +510,39 @@ onMounted(() => {
 }
 
 .answer-1 {
-  transition-delay: 100ms;
+  transition-delay: 30ms;
 }
 
 .answer-2 {
-  transition-delay: 200ms;
+  transition-delay: 60ms;
 }
 
 .answer-3 {
-  transition-delay: 300ms;
+  transition-delay: 90ms;
+}
+
+/* Modal content slide up from bottom */
+.modal-content-enter-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-content-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.modal-content-enter-from {
+  opacity: 0;
+  transform: translateY(100px) scale(0.9);
+}
+
+.modal-content-leave-to {
+  opacity: 0;
+  transform: translateY(50px) scale(0.95);
+}
+
+.modal-content-enter-to,
+.modal-content-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 </style>
