@@ -81,6 +81,12 @@ const initializeQuiz = () => {
 }
 
 const selectAnswer = (id: string) => {
+
+  if (selectedAnswer.value && selectedAnswer.value === id) {
+    next()
+    return
+  }
+
   selectedAnswer.value = id
   userAnswers.value.set(currentQuestionIndex.value, id)
 }
@@ -210,58 +216,64 @@ onMounted(() => {
             <!-- Glow Effect -->
             <div
                 class="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl blur opacity-30 animate-pulse"/>
-
             <div
-                class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 md:p-8 shadow-2xl animate-slide-up">
-              <!-- Question -->
-              <div class="mb-8 min-h-[100px] flex flex-col justify-start">
-                <div class="inline-flex items-center gap-2 mb-4">
+                class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 md:p-8 shadow-2xl">
+              <Transition name="question" mode="out-in" appear>
+                <div :key="currentQuestionIndex" class="question-content">
+
+                  <!-- Question -->
+                  <div class="min-h-[100px] flex flex-col justify-start">
+                    <div class="inline-flex items-center gap-2 mb-4">
                 <span
                     class="px-3 py-1 text-xs font-medium capitalize bg-ocean-500/20 text-ocean-300 rounded-full border border-ocean-500/30">
                     {{ currentQuestion.metadata.category }}
                 </span>
-                </div>
-                <h2 class="text-2xl font-semibold text-slate-100 leading-snug">
-                  {{ currentQuestion.question }}
-                </h2>
-              </div>
-
-              <!-- 🎯 ADD IMAGE DISPLAY HERE -->
-              <div v-if="currentQuestion.images" class="flex justify-center">
-                <div class="bg-white rounded-lg p-4 shadow-lg max-w-xs">
-                  <div class="flex gap-2">
-                    <img
-                        v-for="(img, index) in currentQuestion.images"
-                        :key="index"
-                        :src="img"
-                        :alt="`${currentQuestion.question} - Bild ${index + 1}`"
-                        :class="currentQuestion.images.length === 1 ? 'w-full' : 'flex-1'"
-                        class="h-auto rounded max-h-48 object-contain"
-                    >
+                    </div>
+                    <h2 class="text-2xl font-semibold text-slate-100 leading-snug">
+                      {{ currentQuestion.question }}
+                    </h2>
                   </div>
-                </div>
-              </div>
 
-              <!-- Answer Grid -->
-              <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 md:mb-8">
-                <button
-                    v-for="(answer, index) in currentQuestion.answers"
-                    :key="answer.id"
-                    class="group relative p-2.5 md:p-5 text-left rounded-xl transition-all duration-300 transform"
-                    :class="{
-                    // Normal state (no explanation shown)
-                    'bg-slate-700/50 hover:bg-teal-500/20 border border-slate-600/50 hover:border-teal-500/50 hover:scale-[1.02] hover:shadow-lg': !showExplanation,
-                    // Selected answer when explanation shown
-                    'bg-teal-500/20 border border-teal-500/50': !showExplanation && selectedAnswer === answer.id,
-                    // Correct answer highlight (explanation shown)
-                    'bg-emerald-500/20 border border-emerald-500/50 shadow-lg shadow-emerald-500/20': showExplanation && answer.id === currentQuestion.correctAnswer,
-                    // Wrong selected answer highlight (explanation shown)
-                    'bg-red-500/20 border border-red-500/50 shadow-lg shadow-red-500/20': showExplanation && selectedAnswer === answer.id && answer.id !== currentQuestion.correctAnswer,
-                    // Other answers when explanation shown (dimmed)
-                    'bg-slate-700/30 border border-slate-600/30 opacity-70': showExplanation && selectedAnswer !== answer.id && answer.id !== currentQuestion.correctAnswer
-                  }"
-                    :disabled="showExplanation"
-                    @click="selectAnswer(answer.id)">
+                  <!-- 🎯 ADD IMAGE DISPLAY HERE -->
+                  <div v-if="currentQuestion.images" class="mt-4 flex justify-center">
+                    <div class="bg-white rounded-lg p-4 shadow-lg max-w-xs">
+                      <div class="flex gap-2">
+                        <img
+                            v-for="(img, index) in currentQuestion.images"
+                            :key="index"
+                            :src="img"
+                            :alt="`${currentQuestion.question} - Bild ${index + 1}`"
+                            :class="currentQuestion.images.length === 1 ? 'w-full' : 'flex-1'"
+                            class="h-auto rounded max-h-48 object-contain"
+                        >
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Answer Grid -->
+                  <TransitionGroup name="answers" tag="div" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8" appear>
+                    <button
+                        v-for="(answer, index) in currentQuestion.answers"
+                        :key="`q${currentQuestionIndex}-${answer.id}`"
+                        :class="[
+                        'group relative p-2.5 md:p-5 text-left rounded-xl transition-colors duration-300 touch-manipulation',
+                        `answer-${index}`,
+                        {
+                          // Normal state (no explanation shown)
+                          'bg-slate-700/50 hover:bg-teal-500/20 border border-slate-600/50 hover:border-teal-500/50 hover:shadow-lg': !showExplanation,
+                          // Selected answer when explanation shown
+                          'bg-teal-500/20 border border-teal-500/50': !showExplanation && selectedAnswer === answer.id,
+                          // Correct answer highlight (explanation shown)
+                          'bg-emerald-500/20 border border-emerald-500/50 shadow-lg shadow-emerald-500/20': showExplanation && answer.id === currentQuestion.correctAnswer,
+                          // Wrong selected answer highlight (explanation shown)
+                          'bg-red-500/20 border border-red-500/50 shadow-lg shadow-red-500/20': showExplanation && selectedAnswer === answer.id && answer.id !== currentQuestion.correctAnswer,
+                          // Other answers when explanation shown (dimmed)
+                          'bg-slate-700/30 border border-slate-600/30 opacity-70': showExplanation && selectedAnswer !== answer.id && answer.id !== currentQuestion.correctAnswer
+                        }
+                      ]"
+                        style="-webkit-tap-highlight-color: transparent;"
+                        :disabled="showExplanation"
+                        @click="selectAnswer(answer.id)">
 
   <span class="flex items-center gap-3">
     <span
@@ -314,59 +326,63 @@ onMounted(() => {
     </span>
   </span>
 
-                  <!-- Hover overlay (only when no explanation) -->
-                  <span
-                      v-if="!showExplanation"
-                      class="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-teal-600/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
-                </button>
-              </div>
+                      <!-- Hover overlay (only when no explanation) -->
+                      <span
+                          v-if="!showExplanation"
+                          class="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-teal-600/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
+                    </button>
+                  </TransitionGroup>
 
-              <div
-                  v-if="showExplanation"
-                  class="mb-8 p-6 bg-red-500/10 border border-red-500/30 rounded-xl backdrop-blur-sm animate-slide-up">
-                <div class="flex items-start gap-4">
-                  <div class="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 class="text-red-300 font-semibold mb-2">Nicht ganz richtig</h3>
-                    <p class="text-slate-200 text-sm leading-relaxed mb-3">{{ currentQuestion.explanation }}</p>
-                    <div class="flex items-center gap-2 text-xs">
+                  <div
+                      v-if="showExplanation"
+                      class="mb-8 p-6 bg-red-500/10 border border-red-500/30 rounded-xl backdrop-blur-sm animate-slide-up">
+                    <div class="flex items-start gap-4">
+                      <div class="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 class="text-red-300 font-semibold mb-2">Nicht ganz richtig</h3>
+                        <p class="text-slate-200 text-sm leading-relaxed mb-3">{{ currentQuestion.explanation }}</p>
+                        <div class="flex items-center gap-2 text-xs">
                     <span class="px-2 py-1 bg-teal-500/20 text-teal-300 rounded">Richtige Antwort: {{
                         getIdByIndex(currentQuestion.answers.findIndex(a => a.id === currentQuestion?.correctAnswer))
                       }}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <footer class="border-t md:pt-3 border-slate-700/50">
-                <div class="md:hidden mb-4 flex justify-center">
-                  <StepIndicator :total="settings.questions" :current="currentQuestionIndex"/>
-                </div>
-                <!-- Navigation -->
-                <div class="flex justify-between items-center  ">
-                  <button
-                      class="group flex items-center gap-2 px-4 py-2.5 text-slate-400 hover:text-slate-200 transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                      :disabled="currentQuestionIndex === 0"
-                      @click="prev">
-                    <svg
-                        class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                    <span class="text-sm font-medium">Vorherige</span>
-                  </button>
+                  <footer class="mt-8 border-t border-slate-700/50">
+                    <div class="md:hidden mb-4 flex justify-center">
+                      <StepIndicator :total="settings.questions" :current="currentQuestionIndex"/>
+                    </div>
+                    <!-- Navigation -->
+                    <div class="flex justify-between items-center  ">
+                      <button
+                          class="group flex items-center gap-2 px-4 py-2.5 text-slate-400 hover:text-slate-200 transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                          :disabled="currentQuestionIndex === 0"
+                          @click="prev">
+                        <svg
+                            class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                        <span class="text-sm font-medium">Vorherige</span>
+                      </button>
 
-                  <StepIndicator class="hidden md:block" :total="settings.questions" :current="currentQuestionIndex"/>
+                      <StepIndicator
+                          class="hidden md:block" :total="settings.questions"
+                          :current="currentQuestionIndex"/>
 
-                  <button
-                      class="group px-6 py-2.5 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/25 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                      :disabled="!selectedAnswer"
-                      @click="next">
+                      <button
+                          class="group px-6 py-2.5 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/25 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                          :disabled="!selectedAnswer"
+                          @click="next">
               <span class="flex items-center gap-2">
                 <span class="text-sm">Nächste</span>
                 <svg
@@ -375,9 +391,11 @@ onMounted(() => {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
               </span>
-                  </button>
+                      </button>
+                    </div>
+                  </footer>
                 </div>
-              </footer>
+              </Transition>
             </div>
           </div>
 
@@ -441,3 +459,61 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+
+<!-- Add these CSS classes to your <style> section or global CSS -->
+<style scoped>
+/* Question transition styles */
+.question-enter-active,
+.question-leave-active {
+  transition: all 0.3s ease-in-out;
+}
+
+.question-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.question-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.question-enter-to,
+.question-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Answer buttons staggered animation */
+.answers-enter-active {
+  transition: all 0.4s ease-out;
+}
+
+.answers-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.answers-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered delay for each answer */
+.answer-0 {
+  transition-delay: 0ms;
+}
+
+.answer-1 {
+  transition-delay: 100ms;
+}
+
+.answer-2 {
+  transition-delay: 200ms;
+}
+
+.answer-3 {
+  transition-delay: 300ms;
+}
+</style>
