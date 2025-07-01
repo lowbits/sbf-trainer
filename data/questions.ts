@@ -537,7 +537,7 @@ export const questions: Question[] = [
         ],
         correctAnswer: "A",
         explanation: "Das Tafelzeichen A.2 zeigt ein Überholverbot an. Es verbietet allen Fahrzeugen das Überholen auf der entsprechenden Wasserstraße.",
-        images: ["/img/Verbotszeichen-A02.jpg"],
+        images: ["https://www.elwis.de/DE/Schifffahrtsrecht/Binnenschifffahrtsrecht/Grafiken/Anlage-07/Verbotszeichen-A02.gif?__blob=normal&v=2"],
         metadata: {
             category: "basisfragen",
             licenseType: "binnen",

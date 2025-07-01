@@ -152,7 +152,8 @@ onMounted(() => {
 
 <template>
   <NuxtPwaManifest/>
-  <div class="relative h-full bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 text-white overflow-hidden">
+  <div
+      class="relative min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 text-white overflow-hidden">
     <div v-if="isLoading || !currentQuestion" class="relative z-10 min-h-screen flex justify-center items-center">
       <div class="text-center">
         <div class="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
@@ -177,17 +178,17 @@ onMounted(() => {
       </div>
 
       <!-- Floating Elements -->
-      <div class="absolute top-20 left-20 w-2 h-2 bg-teal-400 rounded-full animate-pulse"/>
+      <div class="absolute top-16 left-16 w-2 h-2 bg-teal-400 rounded-full animate-pulse"/>
       <div class="absolute top-40 right-32 w-1 h-1 bg-teal-400 rounded-full animate-ping"/>
       <div
           class="absolute bottom-32 left-1/4 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"
           style="animation-delay: 1s;"/>
 
-      <div class="relative z-10 min-h-screen flex justify-center items-center p-4">
+      <div class="relative z-10 min-h-screen p-4">
         <div class="w-full max-w-4xl mx-auto animate-fade-in">
 
           <!-- Header with Progress -->
-          <div class="text-center mb-8">
+          <div class="text-center">
             <div class="inline-flex items-center gap-3 mb-4">
               <img src="/favicon.svg" class="w-10 h-10" alt="sbf trainer icon">
               <h1 class="text-4xl font-bold bg-gradient-to-r from-teal-400 to-teal-400 bg-clip-text text-transparent">
@@ -205,7 +206,7 @@ onMounted(() => {
           </div>
 
           <!-- Main Question Card -->
-          <div class="relative">
+          <div class="mt-1.5 relative">
             <!-- Glow Effect -->
             <div
                 class="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl blur opacity-30 animate-pulse"/>
@@ -213,20 +214,20 @@ onMounted(() => {
             <div
                 class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 md:p-8 shadow-2xl animate-slide-up">
               <!-- Question -->
-              <div class="mb-8 min-h-[120px] flex flex-col justify-start">
+              <div class="mb-8 min-h-[100px] flex flex-col justify-start">
                 <div class="inline-flex items-center gap-2 mb-4">
                 <span
                     class="px-3 py-1 text-xs font-medium capitalize bg-ocean-500/20 text-ocean-300 rounded-full border border-ocean-500/30">
                     {{ currentQuestion.metadata.category }}
                 </span>
                 </div>
-                <h2 class="text-xl font-semibold text-slate-100 leading-relaxed">
+                <h2 class="text-2xl font-semibold text-slate-100 leading-snug">
                   {{ currentQuestion.question }}
                 </h2>
               </div>
 
               <!-- 🎯 ADD IMAGE DISPLAY HERE -->
-              <div v-if="currentQuestion.images" class="mb-6 flex justify-center">
+              <div v-if="currentQuestion.images" class="flex justify-center">
                 <div class="bg-white rounded-lg p-4 shadow-lg max-w-xs">
                   <div class="flex gap-2">
                     <img
@@ -242,7 +243,7 @@ onMounted(() => {
               </div>
 
               <!-- Answer Grid -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 md:mb-8">
                 <button
                     v-for="(answer, index) in currentQuestion.answers"
                     :key="answer.id"
@@ -341,29 +342,31 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="mt-4 md:hidden flex justify-center">
-                <StepIndicator :total="settings.questions" :current="currentQuestionIndex"/>
-              </div>
-              <!-- Navigation -->
-              <div class="flex justify-between items-center pt-6 border-t border-slate-700/50">
-                <button
-                    class="group flex items-center gap-2 px-4 py-2.5 text-slate-400 hover:text-slate-200 transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                    :disabled="currentQuestionIndex === 0"
-                    @click="prev">
-                  <svg
-                      class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor"
-                      viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                  </svg>
-                  <span class="text-sm font-medium">Vorherige</span>
-                </button>
+              <footer class="border-t md:pt-3 border-slate-700/50">
+                <div class="md:hidden mb-4 flex justify-center">
+                  <StepIndicator :total="settings.questions" :current="currentQuestionIndex"/>
+                </div>
+                <!-- Navigation -->
+                <div class="flex justify-between items-center  ">
+                  <button
+                      class="group flex items-center gap-2 px-4 py-2.5 text-slate-400 hover:text-slate-200 transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                      :disabled="currentQuestionIndex === 0"
+                      @click="prev">
+                    <svg
+                        class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    <span class="text-sm font-medium">Vorherige</span>
+                  </button>
 
-                <StepIndicator class="hidden md:block" :total="settings.questions" :current="currentQuestionIndex"/>
+                  <StepIndicator class="hidden md:block" :total="settings.questions" :current="currentQuestionIndex"/>
 
-                <button
-                    class="group px-6 py-2.5 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/25 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    :disabled="!selectedAnswer"
-                    @click="next">
+                  <button
+                      class="group px-6 py-2.5 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/25 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      :disabled="!selectedAnswer"
+                      @click="next">
               <span class="flex items-center gap-2">
                 <span class="text-sm">Nächste</span>
                 <svg
@@ -372,8 +375,9 @@ onMounted(() => {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
               </span>
-                </button>
-              </div>
+                  </button>
+                </div>
+              </footer>
             </div>
           </div>
 
