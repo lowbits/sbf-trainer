@@ -76,7 +76,7 @@ const getIdByIndex = (index: number) => ['A', 'B', 'C', 'D'][index]
 const initializeQuiz = () => {
   const allQuestions = shuffleArray(questions)
   shuffledQuestions.value = allQuestions.slice(0, settings.questions)
-  
+
   isLoading.value = false
 }
 
@@ -151,6 +151,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <NuxtPwaManifest />
   <div class="relative h-full bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 text-white overflow-hidden">
     <div v-if="isLoading || !currentQuestion" class="relative z-10 min-h-screen flex justify-center items-center">
       <div class="text-center">
@@ -188,12 +189,7 @@ onMounted(() => {
           <!-- Header with Progress -->
           <div class="text-center mb-8">
             <div class="inline-flex items-center gap-3 mb-4">
-              <div
-                  class="w-10 h-10 bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl flex items-center justify-center animate-glow">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
-              </div>
+              <img src="/favicon.svg" class="w-10 h-10" >
               <h1 class="text-4xl font-bold bg-gradient-to-r from-teal-400 to-teal-400 bg-clip-text text-transparent">
                 SBF Trainer
               </h1>

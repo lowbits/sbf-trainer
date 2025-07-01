@@ -5,7 +5,74 @@ export default defineNuxtConfig({
         compatibilityVersion: 4,
     },
     devtools: {enabled: true,},
-    modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@vueuse/nuxt'],
+    modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@vueuse/nuxt', '@vite-pwa/nuxt', '@nuxtjs/seo'],
+    app: {
+        head: {
+            meta: [
+                { name: 'theme-color', content: '#0d9488' }
+            ]
+        }
+    },
+    site: {
+        url: 'https://sbf-trainer.lowbits.de',
+        name: 'SBF Trainer',
+        description: 'Sportbootführerschein lernen - perfekt für unterwegs! Lerne SBF See und Binnen mit interaktiven Fragen.',
+        defaultLocale: 'de'
+    },
+
+    seo: {
+        meta: {
+            themeColor: '#0d9488',
+            author: 'SBF Trainer Team',
+            keywords: 'Sportbootführerschein, SBF, Bootsführerschein, Lernen, Quiz, Maritime Ausbildung'
+        }
+    },
+    ogImage: {
+        enabled: true,
+    },
+    pwa: {
+        manifest: {
+            name: 'SBF Trainer - Sportbootführerschein Lernen',
+            short_name: 'SBF Trainer',
+            description: 'Lerne für deinen Sportbootführerschein - perfekt für unterwegs! 🚽⛵',
+            theme_color: '#0d9488',
+            background_color: '#0f172a',
+            display: 'standalone',
+            orientation: 'portrait',
+            scope: '/',
+            start_url: '/',
+            lang: 'de',
+            categories: ['education', 'productivity'],
+            icons: [
+                {
+                    src: '/icon-64.png',
+                    sizes: '64x64',
+                    type: 'image/png'
+                },
+                {
+                    src: '/icon-144.png',
+                    sizes: '144x144',
+                    type: 'image/png'
+                },
+                {
+                    src: '/icon-192.png',
+                    sizes: '192x192',
+                    type: 'image/png'
+                },
+                {
+                    src: '/icon-512.png',
+                    sizes: '512x512',
+                    type: 'image/png'
+                },
+                {
+                    src: '/icon-512.png',
+                    sizes: '512x512',
+                    type: 'image/png',
+                    purpose: 'any'
+                }
+            ]
+        },
+    },
     tailwindcss: {
         theme: {
             extend: {
