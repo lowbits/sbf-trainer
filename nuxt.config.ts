@@ -35,7 +35,7 @@ export default defineNuxtConfig({
             name: 'SBF Trainer - Sportbootführerschein Lernen',
             short_name: 'SBF Trainer',
             description: 'Lerne für deinen Sportbootführerschein - perfekt für unterwegs! 🚽⛵',
-            theme_color: '#0d9488',
+            theme_color: '#0f172b',
             background_color: '#0f172a',
             display: 'standalone',
             orientation: 'portrait',
