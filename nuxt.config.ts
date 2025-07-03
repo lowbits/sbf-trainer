@@ -5,7 +5,7 @@ export default defineNuxtConfig({
         compatibilityVersion: 4,
     },
     devtools: {enabled: true},
-    modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@vueuse/nuxt', '@vite-pwa/nuxt', '@nuxtjs/seo', '@nuxthub/core', '@nuxt/icon'],
+    modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@vueuse/nuxt', '@vite-pwa/nuxt', '@nuxtjs/seo', '@nuxt/icon'],
     runtimeConfig: {
         openaiApiKey: process.env.OPENAI_API_KEY,
     },
