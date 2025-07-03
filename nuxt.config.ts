@@ -77,10 +77,6 @@ export default defineNuxtConfig({
             ]
         },
     },
-    hub: {
-        analytics: true,
-        browser: true,
-    },
     icon: {
         serverBundle: {
             collections: ['lucide']

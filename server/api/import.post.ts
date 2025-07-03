@@ -1,4 +1,7 @@
+/*
+
 import {createOpenAI} from "@ai-sdk/openai";
+
 import {consola} from "consola";
 import {generateObject} from "ai";
 import {z} from "zod";
@@ -128,7 +131,7 @@ export default defineEventHandler(async () => {
     const response = await enhanceQuestionWithTool(testQuestion);
 
 
-     */
+
 
 
     console.log(response);
@@ -229,24 +232,24 @@ async function enhanceQuestionWithTool(question: any) {
             model: openai('gpt-4.1'),
             schema: questionEnhancementSchema,
             prompt: `
-            Du bist ein Experte für Seerecht und Schifffahrtsregeln. 
+            Du bist ein Experte für Seerecht und Schifffahrtsregeln.
 
             Analysiere diese Multiple-Choice-Frage und gib strukturierte Verbesserungen auf DEUTSCH:
-            
+
             Frage: ${question.question}
-            
+
             Antwortoptionen:
             ${question.answers.map(answer => `${answer.id}: ${answer.text}`).join('\n')}
-            
+
             Richtige Antwort: ${question.correctAnswer}
             Kategorie: ${question.metadata.category}
-            
-            WICHTIG: 
+
+            WICHTIG:
             - Erklärung muss auf DEUTSCH sein
             - Maximal 1-2 kurze Sätze (20-30 Wörter)
             - Bei Schallsignalen: • = kurz, — = lang
             - Nur erklären warum die Antwort richtig ist, nicht warum andere falsch sind
-            
+
             Gib eine sehr kurze, präzise Erklärung und relevante Tags für bessere Kategorisierung.
             `,
             temperature: 0.3,
@@ -266,3 +269,4 @@ async function enhanceQuestionWithTool(question: any) {
         return question;
     }
 }
+ */
