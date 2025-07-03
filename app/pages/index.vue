@@ -144,7 +144,7 @@ const restartQuiz = async () => {
         <p class="text-slate-400">Quiz wird geladen...</p>
       </div>
     </div>
-    <div v-else>
+    <div v-else class="mb-10">
       <!-- Animated Background -->
       <div class="absolute inset-0 overflow-hidden">
         <div
@@ -435,6 +435,8 @@ const restartQuiz = async () => {
         </div>
       </Transition>
     </div>
+
+    <NuxtLink  class="absolute right-0 bottom-0 z-50" to="daily">Daily Podcast</NuxtLink>
   </div>
 </template>
 
