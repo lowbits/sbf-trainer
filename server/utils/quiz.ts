@@ -1,5 +1,6 @@
 import basicQuestions from '~~/server/assets/data/basic.json'
 import seaQuestions from '~~/server/assets/data/sea.json'
+import {list} from "@vercel/blob";
 
 export function shuffleArray<T>(array: readonly T[]): T[] {
     const shuffled = [...array]

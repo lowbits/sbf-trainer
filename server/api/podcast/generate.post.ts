@@ -9,6 +9,7 @@ import {generatePodcastSchema, podcastResponseSchema, userIdSchema} from "~~/ser
 import {getUserIdFromEvent} from "~~/server/utils/user";
 import {getAllQuestions, getRandomQuestionsFromFile} from "~~/server/utils/quiz";
 import {list, put} from "@vercel/blob";
+import {checkExistingPodcast} from "~~/server/utils/podcasts";
 
 // Updated schema with correct field names
 const podcastContentSchema = z.object({
@@ -304,35 +305,7 @@ async function generateAudio(script: PodcastContent): Promise<{
     }
 }
 
-async function checkExistingPodcast(userId: string, date: string) {
-    try {
-        const {blobs} = await list({
-            prefix: `podcasts/${userId}/${date}`,
-            limit: 10
-        });
 
-        const audioBlob = blobs.find(blob => blob.pathname.endsWith('.mp3'));
-        const scriptBlob = blobs.find(blob => blob.pathname.endsWith('-script.json'));
-
-        if (audioBlob && scriptBlob) {
-            // Fetch script content
-            const scriptResponse = await fetch(scriptBlob.url);
-            const scriptData = await scriptResponse.json();
-
-            return {
-                exists: true,
-                audioUrl: audioBlob.url,
-                script: scriptData.script,
-                questions: scriptData.questions
-            };
-        }
-
-        return {exists: false};
-    } catch (error) {
-        console.error('Error checking existing podcast:', error);
-        return {exists: false};
-    }
-}
 
 // Main daily podcast generation endpoint
 export default defineEventHandler(async (event) => {
