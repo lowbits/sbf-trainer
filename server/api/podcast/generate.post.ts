@@ -4,11 +4,11 @@ import {createOpenAI, openai} from '@ai-sdk/openai';
 import {z} from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
-import {mkdir, writeFile} from "node:fs/promises";
 import {consola} from "consola";
 import {generatePodcastSchema, podcastResponseSchema, userIdSchema} from "~~/server/utils/schema";
 import {getUserIdFromEvent} from "~~/server/utils/user";
 import {getAllQuestions, getRandomQuestionsFromFile} from "~~/server/utils/quiz";
+import {list, put} from "@vercel/blob";
 
 // Updated schema with correct field names
 const podcastContentSchema = z.object({
@@ -254,20 +254,18 @@ ZIEL: Ein 2:30-2:50 Minuten langer Podcast mit praktischen Tipps und Bildbeschre
     }
 }
 
-// Convert script to audio using OpenAI TTS
-async function generateAudio(script: PodcastContent, outputPath: string): Promise<{
-    path: string;
+async function generateAudio(script: PodcastContent): Promise<{
+    audio: Uint8Array;
     format?: string;
     mimeType?: string;
     warnings: string[];
 }> {
     try {
-        // Combine all script parts into one text with correct field names and no numbering
+        // Combine all script parts into one text (same as before)
         const fullScript = `
         ${script.dailyIntro}
         
         ${script.todaysTopics}
-        
         
         ${script.mainContent.map((section, index) => `
         ${section.section}.
@@ -277,14 +275,12 @@ async function generateAudio(script: PodcastContent, outputPath: string): Promis
         ${index < script.mainContent.length - 1 ? '\n\nKommen wir zum nächsten wichtigen Punkt.\n' : ''}
         `).join('')}
         
-        
         Hier sind noch ein paar praktische Hinweise für deine Prüfungsvorbereitung:
         
         ${script.quickTips.join('.\n\n')}
         
-        
         ${script.conclusion}
-            `.trim();
+        `.trim();
 
         consola.info('Generating audio with processed script...');
 
@@ -295,15 +291,8 @@ async function generateAudio(script: PodcastContent, outputPath: string): Promis
             speed: 0.9
         });
 
-        await writeFile(outputPath, response.audio.uint8Array);
-
-        // Log any warnings
-        if (response.warnings && response.warnings.length > 0) {
-            console.warn('TTS Warnings:', response.warnings);
-        }
-
         return {
-            path: outputPath,
+            audio: response.audio.uint8Array,
             format: response.audio.format,
             mimeType: response.audio.mimeType,
             warnings: response.warnings || []
@@ -312,6 +301,36 @@ async function generateAudio(script: PodcastContent, outputPath: string): Promis
     } catch (error) {
         console.error('Error generating audio:', error);
         throw error;
+    }
+}
+
+async function checkExistingPodcast(userId: string, date: string) {
+    try {
+        const {blobs} = await list({
+            prefix: `podcasts/${userId}/${date}`,
+            limit: 10
+        });
+
+        const audioBlob = blobs.find(blob => blob.pathname.endsWith('.mp3'));
+        const scriptBlob = blobs.find(blob => blob.pathname.endsWith('-script.json'));
+
+        if (audioBlob && scriptBlob) {
+            // Fetch script content
+            const scriptResponse = await fetch(scriptBlob.url);
+            const scriptData = await scriptResponse.json();
+
+            return {
+                exists: true,
+                audioUrl: audioBlob.url,
+                script: scriptData.script,
+                questions: scriptData.questions
+            };
+        }
+
+        return {exists: false};
+    } catch (error) {
+        console.error('Error checking existing podcast:', error);
+        return {exists: false};
     }
 }
 
@@ -334,44 +353,24 @@ export default defineEventHandler(async (event) => {
 
     try {
         const today = new Date().toISOString().split('T')[0];
-        const podcastDir = `./public/podcasts/${userId}/`;
-        const scriptPath = path.join(podcastDir, `${today}-script.json`);
-        const podcastFilename = `${today}-${Math.floor(Math.random() * 1000)}.mp3`;
-        const audioPath = `${podcastDir}${podcastFilename}`;
 
-        await mkdir(podcastDir, {recursive: true});
+        const existingPodcast = await checkExistingPodcast(userId, today);
 
 
-        const existingFiles = await fs.readdir(podcastDir)
-        const todaysPodcast = existingFiles.find(file => file.startsWith(today) && file.endsWith('.mp3'))
+        if (existingPodcast.exists) {
+            const cachedResponse = {
+                success: true,
+                podcast: {
+                    audioUrl: existingPodcast.audioUrl,
+                    script: existingPodcast.script,
+                    cached: true
+                },
+                questions: existingPodcast.questions
+            };
 
-        if (todaysPodcast) {
-            const scriptPath = `${podcastDir}${today}-script.json`
-
-            try {
-                const scriptData = await fs.readFile(scriptPath, 'utf-8')
-                const {script, questions} = JSON.parse(scriptData)
-
-                const cachedResponse = {
-                    success: true,
-                    podcast: {
-                        audioUrl: `/podcasts/${userId}/${todaysPodcast}`,
-                        script,
-                        cached: true
-                    },
-                    questions
-                }
-
-                // Validate cached response
-                return podcastResponseSchema.parse(cachedResponse)
-
-            } catch (_) {
-                console.warn('Could not load existing script, regenerating...')
-            }
+            return podcastResponseSchema.parse(cachedResponse);
         }
 
-
-        await mkdir(podcastDir, {recursive: true});
 
         consola.info(`Generating daily podcast for ${today}...`);
 
@@ -384,28 +383,44 @@ export default defineEventHandler(async (event) => {
 
         consola.info(`Generating daily podcast audio...`);
 
-        await generateAudio(processedScript, audioPath);
+        const audio = await generateAudio(processedScript);
 
         consola.success(`Daily podcast audio done...`);
 
         const usedQuestionIds = script.questionsUsed
-
         const allQuestions = await getAllQuestions()
-
-
         const usedQuestions = allQuestions.filter((q: any) => usedQuestionIds.includes(q.id));
 
 
-        await fs.writeFile(scriptPath, JSON.stringify({
+        // Upload audio to Vercel Blob
+        const podcastFilename = `${today}-${Math.floor(Math.random() * 1000)}.mp3`;
+        const audioBlobPath = `podcasts/${userId}/${podcastFilename}`;
+
+        const audioBuffer = Buffer.from(audio.audio);
+
+        const audioBlob = await put(audioBlobPath, audioBuffer, {
+            access: 'public',
+            contentType: audio.mimeType || 'audio/mpeg'
+        });
+
+
+        const scriptData = {
             script: {...script, questionsUsed: usedQuestionIds},
             questions: usedQuestions,
             generatedAt: new Date().toISOString()
-        }))
+        };
+
+        const scriptBlobPath = `podcasts/${userId}/${today}-script.json`;
+        await put(scriptBlobPath, JSON.stringify(scriptData), {
+            access: 'public',
+            contentType: 'application/json'
+        });
+
 
         const response = {
             success: true,
             podcast: {
-                audioUrl: `/podcasts/${userId}/${podcastFilename}`,
+                audioUrl: audioBlob.url,
                 script: {
                     ...script,
                     questionsUsed: usedQuestionIds
