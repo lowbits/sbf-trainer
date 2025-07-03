@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import {$fetch} from "ofetch";
-import {ref, reactive, computed, onMounted, nextTick} from 'vue';
+import {computed, nextTick, onMounted, reactive, ref} from 'vue';
 import type {Question} from "~~/server/assets/data/questions";
 import Card from "~/components/ui/cards/Card.vue";
-import CardTitle from "~/components/ui/cards/CardTitle.vue";
 import CardHeader from "~/components/ui/cards/CardHeader.vue";
 
 // Types
@@ -61,7 +60,6 @@ const loading = ref<boolean>(false);
 const generating = ref<boolean>(false);
 const error = ref<string | null>(null);
 const todaysPodcast = ref<PodcastData | null>(null);
-const podcastHistory = ref<PodcastHistoryItem[]>([]);
 const showScript = ref<boolean>(false);
 
 // Podcast questions data
@@ -86,13 +84,6 @@ const previousVolume = ref<number>(1);
 // Computed
 const progressPercentage = computed<number>(() => {
   return duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0;
-});
-
-const correctQuestionAnswers = computed<number>(() => {
-  return Object.keys(questionAnswers.value).filter(questionId => {
-    const question = podcastQuestions.value.find(q => q.id === questionId);
-    return question && selectedAnswers.value[questionId] === question.correctAnswer;
-  }).length;
 });
 
 // Utility methods
@@ -281,33 +272,7 @@ const upgradeToPro = (): void => {
   navigateTo('/pricing');
 };
 
-const playHistoryPodcast = (podcast: PodcastHistoryItem): void => {
-  todaysPodcast.value = {
-    audioUrl: podcast.audioUrl,
-    script: {
-      title: podcast.title,
-      dailyIntro: '',
-      todaysTopics: '',
-      mainContent: [],
-      quickTips: [],
-      conclusion: '',
-      knotOfTheDay: '',
-      estimatedDuration: podcast.duration,
-      date: podcast.date,
-      questionsUsed: [],
-      metadata: {
-        generatedAt: '',
-        questionsCount: podcast.questionsCount,
-        categories: []
-      }
-    },
-    cached: true
-  };
 
-  nextTick(() => {
-    audioPlayer.value?.play();
-  });
-};
 
 // Lifecycle hooks
 onMounted(async () => {
@@ -471,7 +436,7 @@ onMounted(async () => {
         </div>
 
 
-        <Card v-else-if="todaysPodcast" class="mt-8" variant="teal">
+        <Card v-else-if="todaysPodcast" class="mt-8" variant="teal" padding="narrow">
           <template #header>
             <CardHeader
                 variant="teal"
