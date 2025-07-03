@@ -19,7 +19,8 @@ export async function checkExistingPodcast(userId: string, date: string) {
                 exists: true,
                 audioUrl: audioBlob.url,
                 script: scriptData.script,
-                questions: scriptData.questions
+                questions: scriptData.questions,
+                knot: scriptData.knot
             };
         }
 

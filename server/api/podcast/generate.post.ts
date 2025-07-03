@@ -2,14 +2,13 @@
 import {experimental_generateSpeech, generateObject} from 'ai';
 import {createOpenAI, openai} from '@ai-sdk/openai';
 import {z} from 'zod';
-import fs from 'fs/promises';
-import path from 'path';
 import {consola} from "consola";
 import {generatePodcastSchema, podcastResponseSchema, userIdSchema} from "~~/server/utils/schema";
 import {getUserIdFromEvent} from "~~/server/utils/user";
 import {getAllQuestions, getRandomQuestionsFromFile} from "~~/server/utils/quiz";
-import {list, put} from "@vercel/blob";
+
 import {checkExistingPodcast} from "~~/server/utils/podcasts";
+import {put} from "@vercel/blob";
 
 // Updated schema with correct field names
 const podcastContentSchema = z.object({
@@ -21,6 +20,7 @@ const podcastContentSchema = z.object({
         content: z.string().describe('Personalized nautical exam content speaking directly to the user with "du" (45 seconds of spoken content). Be more detailed and thorough to reach the time goal.'),
         questions: z.array(z.string()).describe('2-3 personalized reflection questions for the user about their exam preparation')
     })).max(2).describe('Main nautical content sections tailored to exam preparation'),
+    knotOfTheDay: z.string().describe('Natural, conversational integration of today\'s knot into the podcast flow. Vary the presentation each day - sometimes as safety tip, sometimes during seamanship discussion, sometimes as practical advice. Make it sound like a natural part of the conversation, not a separate section. Include the knot name and explain its practical use in an engaging way.'),
     quickTips: z.array(z.string()).max(3).describe('Quick personalized PRACTICAL nautical tips - focus on seamanship, navigation techniques, safety procedures, weather, anchoring, docking etc. NOT just abbreviations! Each tip should be 10 seconds when spoken.'),
     conclusion: z.string().describe('Personal wrap-up encouraging the user\'s exam preparation journey (20 seconds)'),
     estimatedDuration: z.string().describe('Estimated total duration - calculate based on speaking speed: intro(10s) + topics(10s) + 2x content(45s each) + tips(30s) + conclusion(20s) = ~2:40. Always estimate 2:30-2:50')
@@ -89,6 +89,7 @@ function processPodcastContent(content: PodcastContent): PodcastContent {
             content: replaceNauticalAbbreviations(section.content),
             questions: section.questions.map(q => replaceNauticalAbbreviations(q))
         })),
+        knotOfTheDay: content.knotOfTheDay,
         quickTips: content.quickTips.map(tip => replaceNauticalAbbreviations(tip)),
         conclusion: replaceNauticalAbbreviations(content.conclusion)
     };
@@ -98,6 +99,7 @@ function processPodcastContent(content: PodcastContent): PodcastContent {
 async function generateDailyPodcastScript(date: string): Promise<PodcastContent & {
     date: string;
     questionsUsed: string[];
+    knotUsed: Knot;
     metadata: {
         generatedAt: string;
         questionsCount: number;
@@ -109,9 +111,11 @@ async function generateDailyPodcastScript(date: string): Promise<PodcastContent 
         const openai = createOpenAI({apiKey});
 
         const [basicQuestions, seaQuestions] = await Promise.all([
-            getRandomQuestionsFromFile('basic.json', Math.floor(Math.random() * 4) + 5),
-            getRandomQuestionsFromFile('sea.json', Math.floor(Math.random() * 4) + 5)
+            getRandomQuestionsFromFile('basic', Math.floor(Math.random() * 4) + 5),
+            getRandomQuestionsFromFile('sea', Math.floor(Math.random() * 4) + 5)
         ])
+
+        const [knot] = await getRandomQuestionsFromFile('knot', 1)
 
         // Select 5-8 random questions for today's episode
         const questions = [...basicQuestions, ...seaQuestions]
@@ -121,7 +125,7 @@ async function generateDailyPodcastScript(date: string): Promise<PodcastContent 
             .slice(0, Math.floor(Math.random() * 4) + 5); // 5-8 questions
 
         // Check if any questions have images
-        const questionsWithImages = selectedQuestions.filter((q: any) => q.images && q.images.length > 0);
+        const questionsWithImages = selectedQuestions.filter((q) => q.images && q.images.length > 0);
         const hasImages = questionsWithImages.length > 0;
 
         const {object} = await generateObject({
@@ -131,7 +135,7 @@ async function generateDailyPodcastScript(date: string): Promise<PodcastContent 
 Du erstellst einen täglichen Nautischen Podcast auf Deutsch. Heute ist ${date}.
 
 Erstelle ein 2:30-2:50 Minuten langes Podcast-Skript mit folgenden Fragen:
-${selectedQuestions.map((q: any, i: number) => {
+${selectedQuestions.map((q, i: number) => {
                 let questionText = `${i + 1}. ${q.question}`;
 
                 // Add image description if question has images
@@ -149,11 +153,26 @@ ${hasImages ? `
 Da ${questionsWithImages.length} der heutigen Fragen Bilder enthalten, erkläre dem Hörer was normalerweise zu sehen ist!
 ` : ''}
 
+HEUTIGER KNOTEN DES TAGES:
+Name: ${knot.name}
+Erklärung: ${knot.explanation}
+Verwendung: ${knot.usage}
+
+WICHTIG - KNOTEN NATÜRLICH EINBAUEN:
+- Erwähne den Knoten "${knot.name}" natürlich im Gesprächsfluss
+- Erkläre wofür er verwendet wird: ${knot.usage}
+- Zusätzliche Details: ${knot.explanation}
+- Baue es organisch in den Podcast ein - mal bei Sicherheit, mal bei praktischen Tipps
+- NICHT als separaten Abschnitt, sondern als natürlicher Teil des Gesprächs
+- Variiere die Art der Erwähnung jeden Tag
+
+
 WICHTIGE ZEITVORGABEN - DER PODCAST MUSS 2:30-2:50 MINUTEN LANG WERDEN:
 - Intro: 10 Sekunden Sprechzeit
 - Tagesvorschau: 10 Sekunden Sprechzeit  
 - Hauptthema 1: 45 Sekunden Sprechzeit (sei ausführlicher!)
 - Hauptthema 2: 45 Sekunden Sprechzeit (sei ausführlicher!)
+- Heutiger Knoten: Nenne den Namen und erkläre kurz wofür er genutzt wird (10 Sekunden)
 - 3 Praktische Tipps: 30 Sekunden Sprechzeit (je 10 Sekunden pro Tipp)
 - Abschluss: 20 Sekunden Sprechzeit
 - GESAMT: 2:40 Minuten - das ist das Ziel!
@@ -241,12 +260,13 @@ ZIEL: Ein 2:30-2:50 Minuten langer Podcast mit praktischen Tipps und Bildbeschre
         return {
             ...object,
             date,
-            questionsUsed: selectedQuestions.map((q: any) => q.id),
+            questionsUsed: selectedQuestions.map((q) => q.id),
+            knotUsed: knot,
             metadata: {
                 generatedAt: new Date().toISOString(),
                 questionsCount: selectedQuestions.length,
-                categories: [...new Set(selectedQuestions.map((q: any) => q.metadata.category))]
-            }
+                categories: [...new Set(selectedQuestions.map((q) => q.metadata.category))]
+            },
         };
 
     } catch (error) {
@@ -276,6 +296,8 @@ async function generateAudio(script: PodcastContent): Promise<{
         ${index < script.mainContent.length - 1 ? '\n\nKommen wir zum nächsten wichtigen Punkt.\n' : ''}
         `).join('')}
         
+        ${script.knotOfTheDay}
+        
         Hier sind noch ein paar praktische Hinweise für deine Prüfungsvorbereitung:
         
         ${script.quickTips.join('.\n\n')}
@@ -304,7 +326,6 @@ async function generateAudio(script: PodcastContent): Promise<{
         throw error;
     }
 }
-
 
 
 // Main daily podcast generation endpoint
@@ -338,7 +359,8 @@ export default defineEventHandler(async (event) => {
                     script: existingPodcast.script,
                     cached: true
                 },
-                questions: existingPodcast.questions
+                questions: existingPodcast.questions,
+                knot: existingPodcast.knot
             };
 
             return podcastResponseSchema.parse(cachedResponse);
@@ -362,8 +384,7 @@ export default defineEventHandler(async (event) => {
 
         const usedQuestionIds = script.questionsUsed
         const allQuestions = await getAllQuestions()
-        const usedQuestions = allQuestions.filter((q: any) => usedQuestionIds.includes(q.id));
-
+        const usedQuestions = allQuestions.filter((q) => usedQuestionIds.includes(q.id));
 
         // Upload audio to Vercel Blob
         const podcastFilename = `${today}-${Math.floor(Math.random() * 1000)}.mp3`;
@@ -380,6 +401,7 @@ export default defineEventHandler(async (event) => {
         const scriptData = {
             script: {...script, questionsUsed: usedQuestionIds},
             questions: usedQuestions,
+            knot: script.knotUsed,
             generatedAt: new Date().toISOString()
         };
 
@@ -400,7 +422,8 @@ export default defineEventHandler(async (event) => {
                 },
                 cached: false
             },
-            questions: usedQuestions
+            questions: usedQuestions,
+            knot: script.knotUsed,
         };
 
         return podcastResponseSchema.parse(response)
@@ -413,59 +436,3 @@ export default defineEventHandler(async (event) => {
         });
     }
 });
-
-// Utility functions for frontend
-export async function getTodaysPodcast() {
-    const today = new Date().toISOString().split('T')[0];
-    const podcastDir = path.join(process.cwd(), 'public', 'podcasts');
-    const scriptPath = path.join(podcastDir, `${today}-script.json`);
-    const audioPath = path.join(podcastDir, `${today}.mp3`);
-
-    try {
-        await fs.access(audioPath);
-        const script = JSON.parse(await fs.readFile(scriptPath, 'utf-8'));
-
-        return {
-            exists: true,
-            audioUrl: `/podcasts/${today}.mp3`,
-            script,
-            date: today
-        };
-    } catch {
-        return {
-            exists: false,
-            date: today
-        };
-    }
-}
-
-export async function getPodcastHistory(days = 7) {
-    const podcasts = [];
-    const podcastDir = path.join(process.cwd(), 'public', 'podcasts');
-
-    for (let i = 0; i < days; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-
-        const scriptPath = path.join(podcastDir, `${dateStr}-script.json`);
-        const audioPath = path.join(podcastDir, `${dateStr}.mp3`);
-
-        try {
-            await fs.access(audioPath);
-            const script = JSON.parse(await fs.readFile(scriptPath, 'utf-8'));
-
-            podcasts.push({
-                date: dateStr,
-                audioUrl: `/podcasts/${dateStr}.mp3`,
-                title: script.title,
-                duration: script.estimatedDuration,
-                questionsCount: script.metadata.questionsCount
-            });
-        } catch {
-            // Podcast doesn't exist for this date
-        }
-    }
-
-    return podcasts;
-}

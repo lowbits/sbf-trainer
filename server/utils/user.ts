@@ -9,7 +9,6 @@ const SECRET_KEY = process.env.SECRET_KEY || 'your-secret-key'
 export function generateAnonymousUserId(): string {
     const userId = `anon_${crypto.randomUUID()}`
 
-    console.log(userId)
     // Validate generated ID
     const result = userIdSchema.safeParse(userId)
     if (!result.success) {

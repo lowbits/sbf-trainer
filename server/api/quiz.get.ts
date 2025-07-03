@@ -10,8 +10,8 @@ export default defineEventHandler(async () => {
     try {
         // Read files and immediately get random subset
         const [basicQuestions, seaQuestions] = await Promise.all([
-            getRandomQuestionsFromFile('basic.json', basicCount),
-            getRandomQuestionsFromFile('sea.json', seaCount)
+            getRandomQuestionsFromFile('basic', basicCount),
+            getRandomQuestionsFromFile('sea', seaCount),
         ])
 
         const quiz = createQuiz(basicQuestions, seaQuestions)

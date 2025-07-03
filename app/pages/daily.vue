@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import {$fetch} from "ofetch";
 import {ref, reactive, computed, onMounted, nextTick} from 'vue';
+import type {Question} from "~~/server/assets/data/questions";
+import Card from "~/components/ui/cards/Card.vue";
+import CardTitle from "~/components/ui/cards/CardTitle.vue";
+import CardHeader from "~/components/ui/cards/CardHeader.vue";
 
 // Types
 interface User {
@@ -20,6 +24,7 @@ interface PodcastScript {
     questions: string[];
   }>;
   quickTips: string[];
+  knotOfTheDay: string;
   conclusion: string;
   estimatedDuration: string;
   date: string;
@@ -64,6 +69,8 @@ const podcastQuestions = ref<any[]>([]);
 const selectedAnswers = ref<Record<string, string>>({});
 const questionAnswers = ref<Record<string, boolean>>({});
 
+const podcastKnot = ref<Knot>();
+
 // Audio player state
 const audioPlayer = ref<HTMLAudioElement | null>(null);
 const isPlaying = ref<boolean>(false);
@@ -106,20 +113,21 @@ const formatTime = (seconds: number): string => {
 
 // API methods
 const generatePodcast = async (): Promise<void> => {
-  console.log("Trying to generate...");
   generating.value = true;
   error.value = null;
 
   try {
     const result = await $fetch<{
       podcast: PodcastData;
-      questions: any[];
+      questions: Question[];
+      knot?: Knot;
     }>('/api/podcast/generate', {
       method: 'POST'
     });
 
     todaysPodcast.value = result.podcast;
     podcastQuestions.value = result.questions;
+    podcastKnot.value = result.knot
 
     // Reset question states
     selectedAnswers.value = {};
@@ -139,11 +147,13 @@ const loadTodaysPodcast = async (): Promise<void> => {
     const result = await $fetch<{
       podcast: PodcastData;
       questions: any[];
+      knot: Knot;
     }>('/api/podcast/today');
 
     if (result) {
       todaysPodcast.value = result.podcast;
       podcastQuestions.value = result.questions;
+      podcastKnot.value = result.knot;
 
       // Reset question states
       selectedAnswers.value = {};
@@ -281,6 +291,7 @@ const playHistoryPodcast = (podcast: PodcastHistoryItem): void => {
       mainContent: [],
       quickTips: [],
       conclusion: '',
+      knotOfTheDay: '',
       estimatedDuration: podcast.duration,
       date: podcast.date,
       questionsUsed: [],
@@ -459,205 +470,192 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Podcast Player -->
-        <div v-else-if="todaysPodcast" class="mt-8 relative">
-          <!-- Glow Effect -->
-          <div
-              class="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl blur opacity-30 animate-pulse"/>
-          <div
-              class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
 
-            <!-- Podcast Header -->
-            <div class="bg-gradient-to-r from-teal-500 to-teal-600 p-4 md:p-6">
-              <div class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
-                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15.536 11.293l-1.414 1.414a8 8 0 01-11.313 0l6.364-6.364a8 8 0 0111.313 11.313l-1.414-1.414"/>
-                  </svg>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <h3 class="text-lg md:text-xl font-semibold text-white break-words">{{
-                      todaysPodcast.script.title
-                    }}</h3>
-                  <p class="text-teal-100 text-sm">Dauer: {{ todaysPodcast.script.estimatedDuration }}</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Custom Audio Player -->
-            <div class="p-6">
-              <!-- Hidden Audio Element -->
-              <audio
-                  ref="audioPlayer"
-                  :src="todaysPodcast.audioUrl"
-                  style="display: none;"
-                  @play="onPlay"
-                  @pause="onPause"
-                  @ended="onEnded"
-                  @loadedmetadata="onLoadedMetadata"
-                  @timeupdate="onTimeUpdate"
-              >
-                Ihr Browser unterstützt das Audio-Element nicht.
-              </audio>
-
-              <!-- Custom Progress Bar -->
-              <div class="space-y-2 mb-6">
-                <div class="flex justify-between text-sm text-slate-400">
-                  <span>{{ formatTime(currentTime) }}</span>
-                  <span>{{ formatTime(duration) }}</span>
-                </div>
-                <div
-                    class="w-full bg-slate-700 rounded-full h-2 cursor-pointer"
-                    @click="seekToPosition"
-                >
-                  <div
-                      class="bg-gradient-to-r from-teal-500 to-teal-600 h-2 rounded-full transition-all duration-100"
-                      :style="{ width: progressPercentage + '%' }"
-                  />
-                </div>
-              </div>
-
-              <!-- Playback Controls -->
-              <div class="flex items-center justify-center space-x-6 mb-6">
-                <button
-                    class="p-3 text-slate-400 hover:text-teal-400 transition-colors rounded-full hover:bg-slate-700/50"
-                    title="10 Sekunden zurück"
-                    @click="seekBackward">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/>
-                  </svg>
-                </button>
-
-                <button
-                    class="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/25 transform hover:scale-105"
-                    :title="isPlaying ? 'Pausieren' : 'Abspielen'"
-                    @click="togglePlayPause"
-                >
-                  <svg v-if="!isPlaying" class="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                  <svg v-else class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                  </svg>
-                </button>
-
-                <button
-                    class="p-3 text-slate-400 hover:text-teal-400 transition-colors rounded-full hover:bg-slate-700/50"
-                    title="10 Sekunden vor"
-                    @click="seekForward">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M11.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/>
-                  </svg>
-                </button>
-              </div>
-
-              <!-- Volume and Speed Controls -->
-              <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8">
-                <!-- Volume Control -->
-                <div class="flex items-center space-x-3">
-                  <button
-                      class="p-2 text-slate-400 hover:text-teal-400 transition-colors"
-                      :title="isMuted ? 'Ton einschalten' : 'Stumm schalten'"
-                      @click="toggleMute"
-                  >
-                    <svg
-                        v-if="isMuted || volume === 0" class="w-5 h-5" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                      <path
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
-                      <path
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
-                    </svg>
-                    <svg v-else-if="volume < 0.5" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M15.536 8.464a5 5 0 010 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
-                    </svg>
-                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
-                    </svg>
-                  </button>
-
-                  <div class="flex items-center space-x-2">
-                    <input
-                        v-model="volume"
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        class="w-20 h-2 bg-slate-600 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 slider"
-                        @input="updateVolume"
-                    >
-                    <span class="text-xs text-slate-400 w-10 text-right">{{ Math.round(volume * 100) }}%</span>
-                  </div>
-                </div>
-
-                <!-- Playback Speed -->
-                <div class="flex items-center space-x-2">
-                  <span class="text-xs text-slate-400">Speed:</span>
-                  <select
-                      v-model="playbackSpeed"
-                      class="bg-slate-700/50 border border-slate-600 rounded px-2 py-1 text-slate-300 text-xs focus:outline-none focus:border-teal-500"
-                      @change="changePlaybackSpeed"
-                  >
-                    <option value="0.75">0.75x</option>
-                    <option value="1">1x</option>
-                    <option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- Script Preview -->
-            <div class="border-t border-slate-700/50 p-6">
-              <button
-                  class="flex items-center space-x-2 text-teal-400 hover:text-teal-300 transition-colors"
-                  @click="showScript = !showScript"
-              >
-                <svg
-                    :class="['w-4 h-4 transition-transform', { 'rotate-180': showScript }]"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        <Card v-else-if="todaysPodcast" class="mt-8" variant="teal">
+          <template #header>
+            <CardHeader
+                variant="teal"
+                :title=" todaysPodcast.script.title"
+                :subtitle="`Dauer: ${ todaysPodcast.script.estimatedDuration }`"
+            >
+              <template #icon>
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                      stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15.536 11.293l-1.414 1.414a8 8 0 01-11.313 0l6.364-6.364a8 8 0 0111.313 11.313l-1.414-1.414"/>
                 </svg>
-                <span>{{ showScript ? 'Skript ausblenden' : 'Skript anzeigen' }}</span>
+              </template>
+            </CardHeader>
+          </template>
+
+
+          <!-- Custom Audio Player -->
+          <div class="p-6">
+            <!-- Hidden Audio Element -->
+            <audio
+                ref="audioPlayer"
+                :src="todaysPodcast.audioUrl"
+                style="display: none;"
+                @play="onPlay"
+                @pause="onPause"
+                @ended="onEnded"
+                @loadedmetadata="onLoadedMetadata"
+                @timeupdate="onTimeUpdate"
+            >
+              Ihr Browser unterstützt das Audio-Element nicht.
+            </audio>
+
+            <!-- Custom Progress Bar -->
+            <div class="space-y-2 mb-6">
+              <div class="flex justify-between text-sm text-slate-400">
+                <span>{{ formatTime(currentTime) }}</span>
+                <span>{{ formatTime(duration) }}</span>
+              </div>
+              <div
+                  class="w-full bg-slate-700 rounded-full h-2 cursor-pointer"
+                  @click="seekToPosition"
+              >
+                <div
+                    class="bg-gradient-to-r from-teal-500 to-teal-600 h-2 rounded-full transition-all duration-100"
+                    :style="{ width: progressPercentage + '%' }"
+                />
+              </div>
+            </div>
+
+            <!-- Playback Controls -->
+            <div class="flex items-center justify-center space-x-6 mb-6">
+              <button
+                  class="p-3 text-slate-400 hover:text-teal-400 transition-colors rounded-full hover:bg-slate-700/50"
+                  title="10 Sekunden zurück"
+                  @click="seekBackward">
+                <Icon name="lucide:fast-forward" class="rotate-180"/>
               </button>
 
-              <div v-if="showScript" class="mt-4 space-y-4 text-sm">
-                <div
-                    v-for="section in todaysPodcast.script.mainContent" :key="section.section"
-                    class="p-4 bg-slate-700/30 rounded-lg">
-                  <h4 class="font-semibold text-teal-300 mb-2">{{ section.section }}</h4>
-                  <p class="text-slate-300 leading-relaxed">{{ section.content }}</p>
-                </div>
+              <button
+                  class="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/25 transform hover:scale-105"
+                  :title="isPlaying ? 'Pausieren' : 'Abspielen'"
+                  @click="togglePlayPause"
+              >
+                <Icon v-if="!isPlaying" name="lucide:play" size="20"/>
+                <Icon v-else name="lucide:pause" size="20"/>
+              </button>
 
-                <div v-if="todaysPodcast.script.quickTips.length" class="p-4 bg-slate-700/30 rounded-lg">
-                  <h4 class="font-semibold text-teal-300 mb-2">Praktische Hinweise</h4>
-                  <ul class="space-y-2">
-                    <li v-for="tip in todaysPodcast.script.quickTips" :key="tip" class="flex items-start space-x-2">
-                      <svg
-                          class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                          viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      <span class="text-slate-300">{{ tip }}</span>
-                    </li>
-                  </ul>
+              <button
+                  class="p-3 text-slate-400 hover:text-teal-400 transition-colors rounded-full hover:bg-slate-700/50"
+                  title="10 Sekunden vor"
+                  @click="seekForward">
+                <Icon name="lucide:fast-forward"/>
+              </button>
+            </div>
+
+            <!-- Volume and Speed Controls -->
+            <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8">
+              <!-- Volume Control -->
+              <div class="flex items-center space-x-3">
+                <button
+                    class="p-2 text-slate-400 hover:text-teal-400 transition-colors"
+                    :title="isMuted ? 'Ton einschalten' : 'Stumm schalten'"
+                    @click="toggleMute"
+                >
+                  <svg
+                      v-if="isMuted || volume === 0" class="w-5 h-5" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24">
+                    <path
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    <path
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                  </svg>
+                  <svg v-else-if="volume < 0.5" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.536 8.464a5 5 0 010 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                  </svg>
+                  <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                  </svg>
+                </button>
+
+                <div class="flex items-center space-x-2">
+                  <input
+                      v-model="volume"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      class="w-20 h-2 bg-slate-600 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 slider"
+                      @input="updateVolume"
+                  >
+                  <span class="text-xs text-slate-400 w-10 text-right">{{ Math.round(volume * 100) }}%</span>
                 </div>
+              </div>
+
+              <!-- Playback Speed -->
+              <div class="flex items-center space-x-2">
+                <span class="text-xs text-slate-400">Speed:</span>
+                <select
+                    v-model="playbackSpeed"
+                    class="bg-slate-700/50 border border-slate-600 rounded px-2 py-1 text-slate-300 text-xs focus:outline-none focus:border-teal-500"
+                    @change="changePlaybackSpeed"
+                >
+                  <option value="0.75">0.75x</option>
+                  <option value="1">1x</option>
+                  <option value="1.25">1.25x</option>
+                  <option value="1.5">1.5x</option>
+                </select>
               </div>
             </div>
           </div>
-        </div>
+
+          <!-- Script Preview -->
+          <div class="border-t border-slate-700/50 p-6">
+            <button
+                class="flex items-center space-x-2 text-teal-400 hover:text-teal-300 transition-colors"
+                @click="showScript = !showScript"
+            >
+              <svg
+                  :class="['w-4 h-4 transition-transform', { 'rotate-180': showScript }]"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+              <span>{{ showScript ? 'Skript ausblenden' : 'Skript anzeigen' }}</span>
+            </button>
+
+            <div v-if="showScript" class="mt-4 space-y-4 text-sm">
+              <div
+                  v-for="section in todaysPodcast.script.mainContent" :key="section.section"
+                  class="p-4 bg-slate-700/30 rounded-lg">
+                <h4 class="font-semibold text-teal-300 mb-2">{{ section.section }}</h4>
+                <p class="text-slate-300 leading-relaxed">{{ section.content }}</p>
+              </div>
+
+              <div
+                  v-if="todaysPodcast.script.knotOfTheDay"
+                  class="p-4 bg-slate-700/30 rounded-lg">
+                <h4 class="font-semibold text-teal-300 mb-2">Heutiger Knoten</h4>
+                <p class="text-slate-300 leading-relaxed">{{ todaysPodcast.script.knotOfTheDay }}</p>
+              </div>
+
+              <div v-if="todaysPodcast.script.quickTips.length" class="p-4 bg-slate-700/30 rounded-lg">
+                <h4 class="font-semibold text-teal-300 mb-2">Praktische Hinweise</h4>
+                <ul class="space-y-2">
+                  <li v-for="tip in todaysPodcast.script.quickTips" :key="tip" class="flex items-start space-x-2">
+                    <svg
+                        class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span class="text-slate-300">{{ tip }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </Card>
+
 
         <!-- Generate Button -->
         <div v-else-if="user?.subscription?.isPro" class="mt-8 relative">
@@ -688,67 +686,83 @@ onMounted(async () => {
         </div>
 
         <!-- Podcast Questions Section -->
-        <div v-if="podcastQuestions && podcastQuestions.length" class="mt-8 relative">
-          <div class="absolute -inset-0.5 bg-gradient-to-r from-slate-500 to-slate-600 rounded-2xl blur opacity-20"/>
-          <div class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-              <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              Fragen aus dieser Episode
-            </h3>
 
-            <!-- Question Cards -->
-            <div class="space-y-6">
-              <div
-                  v-for="(question, questionIndex) in podcastQuestions"
-                  :key="question.id"
-                  class="relative"
-              >
-                <!-- Glow Effect -->
-                <div
-                    class="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl blur opacity-30 animate-pulse"/>
-                <div
-                    class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 shadow-2xl">
+        <Card v-if="podcastQuestions && podcastQuestions.length" class="mt-8" padding="narrow">
 
-                  <!-- Question Header -->
-                  <div class="min-h-[80px] flex flex-col justify-start">
-                    <div class="inline-flex items-center gap-2 mb-4">
+          <template #header>
+            <CardHeader
+                variant="blue"
+                title="Fragen aus dieser Episode"
+            >
+              <template #icon>
+                <svg
+                    class="w-8 h-8 text-white transform group-hover:scale-110 transition-transform duration-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                  <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      d="M12 2C8 4 4 8 2 12c2 4 6 8 10 10 4-2 8-6 10-10-2-4-6-8-10-10z"
+                      class="animate-pulse"
+                  />
+                  <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 8c2-2 6-2 8 0s2 6 0 8-6 2-8 0-2-6 0-8z"
+                  />
+                  <circle cx="12" cy="12" r="2" stroke-width="2"/>
+                </svg>
+              </template>
+            </CardHeader>
+          </template>
+
+          <div class="space-y-6">
+            <Card
+                v-for="(question, questionIndex) in podcastQuestions"
+                :key="question.id"
+                variant="blue"
+                padding="narrow"
+            >
+              <!-- Question Header -->
+              <div class="flex flex-col justify-start">
+                <div class="inline-flex items-center gap-2 mb-4">
                       <span
                           class="px-3 py-1 text-xs font-medium capitalize bg-teal-500/20 text-teal-300 rounded-full border border-teal-500/30">
                         {{ question.metadata?.category || 'Nautik' }}
                       </span>
-                      <span class="text-xs text-slate-400">Frage {{ questionIndex + 1 }}</span>
-                    </div>
-                    <h4 class="text-xl font-semibold text-slate-100 leading-snug text-pretty">
-                      {{ question.question }}
-                    </h4>
-                  </div>
+                  <span class="text-xs text-slate-400">Frage {{ questionIndex + 1 }}</span>
+                </div>
+                <h4 class="text-xl font-semibold text-slate-100 leading-snug text-pretty">
+                  {{ question.question }}
+                </h4>
+              </div>
 
-                  <!-- Image Display -->
-                  <div v-if="question.images?.length" class="mt-4 flex justify-center">
-                    <div class="bg-white rounded-lg p-4 shadow-lg max-w-xs">
-                      <div class="flex gap-2">
-                        <img
-                            v-for="(img, index) in question.images"
-                            :key="index"
-                            :src="img"
-                            :alt="`${question.question} - Bild ${index + 1}`"
-                            :class="question.images.length === 1 ? 'w-full' : 'flex-1'"
-                            class="h-auto rounded max-h-48 object-contain"
-                        >
-                      </div>
-                    </div>
+              <!-- Image Display -->
+              <div v-if="question.images?.length" class="mt-4 flex justify-center">
+                <div class="bg-white rounded-lg p-4 shadow-lg max-w-xs">
+                  <div class="flex gap-2">
+                    <img
+                        v-for="(img, index) in question.images"
+                        :key="index"
+                        :src="img"
+                        :alt="`${question.question} - Bild ${index + 1}`"
+                        :class="question.images.length === 1 ? 'w-full' : 'flex-1'"
+                        class="h-auto rounded max-h-48 object-contain"
+                    >
                   </div>
+                </div>
+              </div>
 
-                  <!-- Answer Grid -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                    <button
-                        v-for="(answer, answerIndex) in question.answers"
-                        :key="answer.id"
-                        :class="[
+              <!-- Answer Grid -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <button
+                    v-for="(answer, answerIndex) in question.answers"
+                    :key="answer.id"
+                    :class="[
                           'group relative p-4 text-left rounded-xl transition-colors duration-300 touch-manipulation',
                           {
                             // Normal state
@@ -763,10 +777,10 @@ onMounted(async () => {
                             'bg-slate-700/30 border border-slate-600/30 opacity-70': questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id && answer.id !== question.correctAnswer
                           }
                         ]"
-                        style="-webkit-tap-highlight-color: transparent;"
-                        :disabled="questionAnswers[question.id]"
-                        @click="selectQuestionAnswer(question.id, answer.id)"
-                    >
+                    style="-webkit-tap-highlight-color: transparent;"
+                    :disabled="questionAnswers[question.id]"
+                    @click="selectQuestionAnswer(question.id, answer.id)"
+                >
                       <span class="flex items-center gap-3">
                         <span
                             class="w-8 h-8 shrink-0 bg-gradient-to-r rounded-lg flex items-center justify-center font-bold text-sm"
@@ -818,139 +832,232 @@ onMounted(async () => {
                         </span>
                       </span>
 
-                      <!-- Hover overlay -->
-                      <span
-                          v-if="!questionAnswers[question.id]"
-                          class="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-teal-600/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      />
-                    </button>
-                  </div>
+                  <!-- Hover overlay -->
+                  <span
+                      v-if="!questionAnswers[question.id]"
+                      class="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-teal-600/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  />
+                </button>
+              </div>
 
-                  <!-- Explanation (shown after answering) -->
-                  <div
-                      v-if="questionAnswers[question.id]"
-                      class="mt-6 p-6 rounded-xl backdrop-blur-sm animate-slide-up"
-                      :class="{
+              <!-- Explanation (shown after answering) -->
+              <div
+                  v-if="questionAnswers[question.id]"
+                  class="mt-6 p-6 rounded-xl backdrop-blur-sm animate-slide-up"
+                  :class="{
                         'bg-emerald-500/10 border border-emerald-500/30': selectedAnswers[question.id] === question.correctAnswer,
                         'bg-red-500/10 border border-red-500/30': selectedAnswers[question.id] !== question.correctAnswer
                       }"
-                  >
-                    <div class="flex items-start gap-4">
-                      <div
-                          class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                          :class="{
+              >
+                <div class="flex items-start gap-4">
+                  <div
+                      class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      :class="{
                           'bg-emerald-500/20': selectedAnswers[question.id] === question.correctAnswer,
                           'bg-red-500/20': selectedAnswers[question.id] !== question.correctAnswer
                         }"
-                      >
-                        <svg
-                            class="w-5 h-5"
-                            :class="{
+                  >
+                    <svg
+                        class="w-5 h-5"
+                        :class="{
                             'text-emerald-400': selectedAnswers[question.id] === question.correctAnswer,
                             'text-red-400': selectedAnswers[question.id] !== question.correctAnswer
                           }"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                        >
-                          <path
-                              v-if="selectedAnswers[question.id] === question.correctAnswer"
-                              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M5 13l4 4L19 7"
-                          />
-                          <path
-                              v-else
-                              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h5
-                            class="font-semibold mb-2"
-                            :class="{
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path
+                          v-if="selectedAnswers[question.id] === question.correctAnswer"
+                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M5 13l4 4L19 7"
+                      />
+                      <path
+                          v-else
+                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h5
+                        class="font-semibold mb-2"
+                        :class="{
                             'text-emerald-300': selectedAnswers[question.id] === question.correctAnswer,
                             'text-red-300': selectedAnswers[question.id] !== question.correctAnswer
                           }"
-                        >
-                          {{
-                            selectedAnswers[question.id] === question.correctAnswer ? 'Richtig!' : 'Nicht ganz richtig'
-                          }}
-                        </h5>
-                        <p class="text-slate-200 text-sm leading-relaxed mb-3">{{ question.explanation }}</p>
-                        <div
-                            v-if="selectedAnswers[question.id] !== question.correctAnswer"
-                            class="flex items-center gap-2 text-xs">
+                    >
+                      {{
+                        selectedAnswers[question.id] === question.correctAnswer ? 'Richtig!' : 'Nicht ganz richtig'
+                      }}
+                    </h5>
+                    <p class="text-slate-200 text-sm leading-relaxed mb-3">{{ question.explanation }}</p>
+                    <div
+                        v-if="selectedAnswers[question.id] !== question.correctAnswer"
+                        class="flex items-center gap-2 text-xs">
                           <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded">
                             Richtige Antwort: {{
                               String.fromCharCode(65 + question.answers.findIndex(a => a.id === question.correctAnswer))
                             }}
                           </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
-
                 </div>
               </div>
-            </div>
-
-            <!-- Question Stats -->
-            <div v-if="Object.keys(questionAnswers).length > 0" class="mt-6 text-center text-slate-400 text-sm">
-              <p>🎯 Richtige Antworten:
-                <span class="text-teal-400 font-medium">
-                  {{ correctQuestionAnswers }}/{{ Object.keys(questionAnswers).length }}
-                </span>
-                • 📚 Aus dem Podcast:
-                <span class="text-blue-400 font-medium">{{ podcastQuestions.length }} Fragen</span>
-              </p>
-            </div>
-
+            </Card>
           </div>
-        </div>
+        </Card>
 
-        <!-- Podcast History -->
-        <div v-if="podcastHistory.length && user?.subscription?.isPro" class="mt-8 relative">
-          <div class="absolute -inset-0.5 bg-gradient-to-r from-slate-500 to-slate-600 rounded-2xl blur opacity-20"/>
-          <div class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              Letzte Podcasts
-            </h3>
-            <div class="space-y-3">
-              <div
-                  v-for="podcast in podcastHistory"
-                  :key="podcast.date"
-                  class="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-colors"
-              >
-                <div class="flex items-center space-x-3">
-                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
+        <Card v-if="podcastKnot" class="mt-8" variant="orange">
+          <template #header>
+            <CardHeader
+                variant="orange"
+                title="Knoten des Tages"
+                :subtitle="podcastKnot.name"
+            >
+              <template #icon>
+                <svg
+                    class="w-8 h-8 text-white transform group-hover:scale-110 transition-transform duration-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                  <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      d="M12 2C8 4 4 8 2 12c2 4 6 8 10 10 4-2 8-6 10-10-2-4-6-8-10-10z"
+                  />
+                  <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 8c2-2 6-2 8 0s2 6 0 8-6 2-8 0-2-6 0-8z"
+                  />
+                  <circle cx="12" cy="12" r="2" stroke-width="2"/>
+                </svg>
+              </template>
+            </CardHeader>
+          </template>
+
+          <!-- Content Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Left Column: Info -->
+            <div class="space-y-6">
+              <!-- Knot Image -->
+              <div v-if="podcastKnot.image" class="text-center">
+                <div class="inline-block bg-white rounded-2xl p-4 shadow-lg">
+                  <img
+                      :src="podcastKnot.image"
+                      :alt="`${podcastKnot.name} Knoten`"
+                      class="max-w-full h-auto max-h-48 rounded-lg"
+                  />
+                </div>
+                <p class="text-slate-400 text-sm mt-2">{{ podcastKnot.name }}</p>
+              </div>
+              <!-- Knot name with decorative elements -->
+              <div v-if="false" class="text-center mb-6">
+                <div
+                    class="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-orange-500/20 to-amber-600/20 rounded-full border border-orange-500/30">
+                  <div
+                      class="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">K</span>
+                  </div>
+                  <h4 class="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">
+                    {{ podcastKnot?.name }}
+                  </h4>
+                </div>
+              </div>
+
+              <!-- Usage section -->
+              <div class="p-4 bg-slate-700/30 rounded-xl border border-slate-600/30">
+                <div class="flex items-start gap-3">
+                  <div
+                      class="w-10 h-10 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                  </div>
                   <div>
-                    <p class="font-medium text-slate-200">{{ podcast.title }}</p>
-                    <p class="text-sm text-slate-400">{{ formatDate(new Date(podcast.date)) }} • {{
-                        podcast.duration
-                      }}</p>
+                    <h5 class="font-semibold text-emerald-300 mb-2">Verwendung</h5>
+                    <p class="text-slate-200 leading-relaxed">{{ podcastKnot.usage }}</p>
                   </div>
                 </div>
-                <button
-                    class="p-2 text-teal-400 hover:text-teal-300 hover:bg-teal-500/20 rounded-lg transition-colors"
-                    @click="playHistoryPodcast(podcast)"
-                >
-                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
+              </div>
+
+              <!-- Explanation section -->
+              <div class="p-4 bg-slate-700/30 rounded-xl border border-slate-600/30">
+                <div class="flex items-start gap-3">
+                  <div
+                      class="w-10 h-10 bg-gradient-to-r from-blue-500/20 to-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h5 class="font-semibold text-blue-300 mb-2">Erklärung</h5>
+                    <p class="text-slate-200 leading-relaxed">{{ podcastKnot.explanation }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Steps -->
+            <div v-if="podcastKnot.steps && podcastKnot.steps.length" class="space-y-4">
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                    class="w-10 h-10 bg-gradient-to-r from-orange-500/20 to-amber-600/20 rounded-lg flex items-center justify-center">
+                  <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                   </svg>
-                </button>
+                </div>
+                <h5 class="font-semibold text-orange-300 text-lg">Anleitung</h5>
+              </div>
+
+              <!-- Steps List -->
+              <div class="space-y-3">
+                <div
+                    v-for="(step, index) in podcastKnot.steps"
+                    :key="index"
+                    class="flex gap-4 p-3 bg-slate-700/20 rounded-lg hover:bg-slate-700/30 transition-colors"
+                >
+                  <!-- Step Number -->
+                  <div
+                      class="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">{{ index + 1 }}</span>
+                  </div>
+
+                  <!-- Step Content -->
+                  <div class="flex-1 min-w-0">
+                    <p class="text-slate-200 text-sm leading-relaxed">{{ step }}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
+          <!-- Practice tip -->
+          <div
+              class="mt-6 p-4 bg-gradient-to-r from-orange-500/10 to-amber-600/10 rounded-xl border border-orange-500/20">
+            <div class="flex items-center gap-3">
+              <div
+                  class="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+              </div>
+              <p class="text-orange-200 text-sm font-medium">
+                Übe diesen Knoten praktisch für deine SBF-Prüfung!
+                <span v-if="podcastKnot.steps" class="text-orange-300">
+          Folge den {{ podcastKnot.steps.length }} Schritten oben.
+        </span>
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   </div>

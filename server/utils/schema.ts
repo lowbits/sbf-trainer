@@ -20,6 +20,16 @@ export const userResponseSchema = z.object({
     isNew: z.boolean()
 })
 
+export const knotSchema = z.object({
+    name: z.string().describe('German name of the knot'),
+    englishName: z.string().describe('English name of the knot'),
+    image: z.string().describe('Emoji representation of the knot'),
+    usage: z.string().describe('What the knot is used for (German)'),
+    explanation: z.string().describe('Detailed explanation of the knot (German)'),
+    steps: z.array(z.string()).describe('Step-by-step instructions for tying the knot'),
+    difficulty: z.enum(['Einfach', 'Mittel', 'Schwer']).describe('Difficulty level of the knot')
+});
+
 export const podcastResponseSchema = z.object({
     success: z.boolean(),
     podcast: z.object({
@@ -33,6 +43,7 @@ export const podcastResponseSchema = z.object({
                 content: z.string(),
                 questions: z.array(z.string())
             })),
+            knotOfTheDay: z.string().optional(),
             quickTips: z.array(z.string()),
             conclusion: z.string(),
             estimatedDuration: z.string(),
@@ -54,6 +65,9 @@ export const podcastResponseSchema = z.object({
             category: z.string(),
             difficulty: z.string().optional()
         }).optional()
-    }))
+    })),
+    knot: knotSchema.optional(),
 })
+
+export type Knot = z.infer<typeof knotSchema>
 

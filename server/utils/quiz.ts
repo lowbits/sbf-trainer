@@ -1,6 +1,8 @@
 import basicQuestions from '~~/server/assets/data/basic.json'
 import seaQuestions from '~~/server/assets/data/sea.json'
-import {list} from "@vercel/blob";
+import knotsQuestion from '~~/server/assets/data/knots.json'
+import type {Knot} from "~~/server/utils/schema";
+import type {Question} from "~~/server/assets/data/questions";
 
 export function shuffleArray<T>(array: readonly T[]): T[] {
     const shuffled = [...array]
@@ -11,22 +13,28 @@ export function shuffleArray<T>(array: readonly T[]): T[] {
     return shuffled
 }
 
-export async function getRandomQuestionsFromFile(filename: string, count: number) {
-    let questions: any[]
+export async function getRandomQuestionsFromFile(filename: 'knot', count: number): Promise<Knot[]>
+export async function getRandomQuestionsFromFile(filename: 'basic' | 'sea', count: number): Promise<Question[]>
+export async function getRandomQuestionsFromFile(
+    filename: 'basic' | 'sea' | 'knot',
+    count: number
+): Promise<(Knot | Question)[]> {
+    let questions: (Knot | Question)[]
 
-    // Select the appropriate dataset
     switch (filename) {
-        case 'basic.json':
-            questions = basicQuestions
+        case 'basic':
+            questions = basicQuestions as Question[];
             break
-        case 'sea.json':
-            questions = seaQuestions
+        case 'sea':
+            questions = seaQuestions as Question[];
+            break;
+        case 'knot':
+            questions = knotsQuestion as Knot[];
             break
         default:
             throw new Error(`Unknown file: ${filename}`)
     }
 
-    // Get random subset immediately
     const shuffled = [...questions].sort(() => 0.5 - Math.random())
     return shuffled.slice(0, count)
 }
