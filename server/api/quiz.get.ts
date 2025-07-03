@@ -1,8 +1,6 @@
-import {join} from "pathe";
-import {readFile} from "node:fs/promises";
-import {shuffleArray} from "~~/server/utils/quiz";
+import {getRandomQuestionsFromFile, shuffleArray} from "~~/server/utils/quiz";
 import {consola} from "consola";
-import { Question } from "~~/data/questions";
+import type {Question} from "~~/data/questions";
 
 export default defineEventHandler(async () => {
     const basicCount = 4
@@ -55,15 +53,7 @@ function createQuiz(basicQuestions: Question[], seaQuestions: Question[]): Quest
     return quiz
 }
 
-async function getRandomQuestionsFromFile(filename: string, count: number) {
-    const filePath = join(process.cwd(), 'data', filename)
-    const data = await readFile(filePath, 'utf8')
-    const questions = JSON.parse(data)
 
-    // Get random subset immediately
-    const shuffled = [...questions].sort(() => 0.5 - Math.random())
-    return shuffled.slice(0, count)
-}
 
 
 function generateQuizId() {

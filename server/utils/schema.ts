@@ -49,7 +49,7 @@ export const podcastResponseSchema = z.object({
         })),
         correctAnswer: z.string(),
         explanation: z.string(),
-        images: z.array(z.string()).optional(),
+        images: z.array(z.string()).optional().nullable(),
         metadata: z.object({
             category: z.string(),
             difficulty: z.string().optional()

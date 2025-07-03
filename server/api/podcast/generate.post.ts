@@ -8,6 +8,7 @@ import {mkdir, writeFile} from "node:fs/promises";
 import {consola} from "consola";
 import {generatePodcastSchema, podcastResponseSchema, userIdSchema} from "~~/server/utils/schema";
 import {getUserIdFromEvent} from "~~/server/utils/user";
+import {getAllQuestions, getRandomQuestionsFromFile} from "~~/server/utils/quiz";
 
 // Updated schema with correct field names
 const podcastContentSchema = z.object({
@@ -93,7 +94,7 @@ function processPodcastContent(content: PodcastContent): PodcastContent {
 }
 
 // Generate daily podcast script with TypeScript types
-async function generateDailyPodcastScript(questions: any[], date: string): Promise<PodcastContent & {
+async function generateDailyPodcastScript(date: string): Promise<PodcastContent & {
     date: string;
     questionsUsed: string[];
     metadata: {
@@ -106,7 +107,14 @@ async function generateDailyPodcastScript(questions: any[], date: string): Promi
         const apiKey = useRuntimeConfig().openaiApiKey;
         const openai = createOpenAI({apiKey});
 
+        const [basicQuestions, seaQuestions] = await Promise.all([
+            getRandomQuestionsFromFile('basic.json', Math.floor(Math.random() * 4) + 5),
+            getRandomQuestionsFromFile('sea.json', Math.floor(Math.random() * 4) + 5)
+        ])
+
         // Select 5-8 random questions for today's episode
+        const questions = [...basicQuestions, ...seaQuestions]
+
         const selectedQuestions = questions
             .sort(() => Math.random() - 0.5)
             .slice(0, Math.floor(Math.random() * 4) + 5); // 5-8 questions
@@ -365,14 +373,9 @@ export default defineEventHandler(async (event) => {
 
         await mkdir(podcastDir, {recursive: true});
 
-        // Load questions database
-        const questionsData = await fs.readFile('enhanced_questions_with_schema.json', 'utf-8');
-        const allQuestions = JSON.parse(questionsData);
-
         consola.info(`Generating daily podcast for ${today}...`);
 
-        // Generate script
-        const script = await generateDailyPodcastScript(allQuestions, today);
+        const script = await generateDailyPodcastScript(today);
 
         consola.success(`Daily podcast script done...`);
 
@@ -386,6 +389,9 @@ export default defineEventHandler(async (event) => {
         consola.success(`Daily podcast audio done...`);
 
         const usedQuestionIds = script.questionsUsed
+
+        const allQuestions = await getAllQuestions()
+
 
         const usedQuestions = allQuestions.filter((q: any) => usedQuestionIds.includes(q.id));
 
