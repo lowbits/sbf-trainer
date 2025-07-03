@@ -4,15 +4,19 @@ export default defineNuxtConfig({
     future: {
         compatibilityVersion: 4,
     },
-    devtools: {enabled: true,},
-    modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@vueuse/nuxt', '@vite-pwa/nuxt', '@nuxtjs/seo'],
+    devtools: {enabled: true},
+    modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@vueuse/nuxt', '@vite-pwa/nuxt', '@nuxtjs/seo', '@nuxthub/core', '@nuxt/icon'],
+    runtimeConfig: {
+        openaiApiKey: process.env.OPENAI_API_KEY,
+    },
     app: {
         head: {
             meta: [
-                { name: 'theme-color', content: '#0f172b' }
+                {name: 'theme-color', content: '#0f172b'}
             ]
         }
     },
+
     site: {
         url: 'https://sbf-trainer.lowbits.de',
         name: 'SBF Trainer',
@@ -72,6 +76,15 @@ export default defineNuxtConfig({
                 }
             ]
         },
+    },
+    hub: {
+        analytics: true,
+        browser: true,
+    },
+    icon: {
+        serverBundle: {
+            collections: ['lucide']
+        }
     },
     tailwindcss: {
         theme: {
