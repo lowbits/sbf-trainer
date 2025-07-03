@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type {Question} from "~~/data/questions"
+import type {Question} from "~~/server/assets/data/questions"
 import StepIndicator from "~/components/ui/stepIndicator/StepIndicator.vue"
 
 // Settings

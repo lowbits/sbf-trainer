@@ -1,5 +1,5 @@
-import {join} from "pathe";
-import {readFile} from "node:fs/promises";
+import basicQuestions from '~~/server/assets/data/basic.json'
+import seaQuestions from '~~/server/assets/data/sea.json'
 
 export function shuffleArray<T>(array: readonly T[]): T[] {
     const shuffled = [...array]
@@ -11,20 +11,25 @@ export function shuffleArray<T>(array: readonly T[]): T[] {
 }
 
 export async function getRandomQuestionsFromFile(filename: string, count: number) {
-    const filePath = join(process.cwd(), 'data', filename)
-    const data = await readFile(filePath, 'utf8')
-    const questions = JSON.parse(data)
+    let questions: any[]
+
+    // Select the appropriate dataset
+    switch (filename) {
+        case 'basic.json':
+            questions = basicQuestions
+            break
+        case 'sea.json':
+            questions = seaQuestions
+            break
+        default:
+            throw new Error(`Unknown file: ${filename}`)
+    }
 
     // Get random subset immediately
     const shuffled = [...questions].sort(() => 0.5 - Math.random())
     return shuffled.slice(0, count)
 }
 
-
 export const getAllQuestions = async () => {
-    const [basic, sea] = await Promise.all([
-        readFile(join(process.cwd(), 'data', 'basic.json'), 'utf8'),
-        readFile(join(process.cwd(), 'data', 'sea.json'), 'utf8'),
-    ])
-    return [...JSON.parse(basic), ...JSON.parse(sea)]
+    return [...basicQuestions, ...seaQuestions]
 }

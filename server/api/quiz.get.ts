@@ -1,6 +1,6 @@
 import {getRandomQuestionsFromFile, shuffleArray} from "~~/server/utils/quiz";
 import {consola} from "consola";
-import type {Question} from "~~/data/questions";
+import type {Question} from "~~/server/assets/data/questions";
 
 export default defineEventHandler(async () => {
     const basicCount = 4
