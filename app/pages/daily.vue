@@ -455,7 +455,7 @@ onMounted(async () => {
 
 
           <!-- Custom Audio Player -->
-          <div class="p-6">
+          <div class="py-6">
             <!-- Hidden Audio Element -->
             <audio
                 ref="audioPlayer"
@@ -576,7 +576,7 @@ onMounted(async () => {
           </div>
 
           <!-- Script Preview -->
-          <div class="border-t border-slate-700/50 p-6">
+          <div class="border-t border-slate-700/50 pt-6">
             <button
                 class="flex items-center space-x-2 text-teal-400 hover:text-teal-300 transition-colors"
                 @click="showScript = !showScript"
