@@ -2,10 +2,15 @@
 import CardHeader from "~/components/ui/cards/CardHeader.vue";
 import {computed, ref} from "vue";
 import {useTimer} from "~/composables/useTimer";
+import {useQuiz} from "~/composables/useQuiz";
+import ExamResultModal from "~/components/modals/ExamResultModal.vue";
+import QuestionContent from "~/components/quiz/QuestionContent.vue";
+import QuestionPicker from "~/components/quiz/QuestionPicker.vue";
 
 const props = defineProps<{
   exam: ExamSheet
 }>()
+
 
 const showExamPreview = ref<boolean>(false);
 
@@ -15,8 +20,26 @@ const isExamActive = ref<boolean>(false);
 
 const currentQuestionIndex = ref<number>(0);
 
-const currentQuestion = computed(() => {
+const showQuestionPicker = ref(false);
+
+const selectedAnswer = ref<string>();
+
+const showResultsModal = ref(false);
+
+const isReviewMode = ref(false);
+const showAnswerReview = ref(false);
+const reviewFilter = ref<'all' | 'correct' | 'wrong' | 'unanswered'>('all');
+
+const {track, answers, reset} = useQuiz({questions: props.exam.questions})
+
+const currentQuestion = computed<ExamQuestion | null>(() => {
   return props.exam?.questions[currentQuestionIndex.value] || null;
+});
+
+useHead({
+  bodyAttrs: {
+    class: computed(() => isExamActive.value || isReviewMode.value ? 'overflow-hidden overscoll-none' : '')
+  }
 });
 
 const progress = computed(() => {
@@ -38,6 +61,79 @@ const examStats = computed(() => {
     passingScore: props.exam.metadata.passingScore
   };
 });
+
+// Review mode computeds
+const reviewStats = computed(() => {
+  if (!props.exam) return null;
+
+  let correct = 0;
+  let wrong = 0;
+  let unanswered = 0;
+
+  props.exam.questions.forEach(question => {
+    const userAnswer = answers.value.get(question.id);
+    if (!userAnswer) {
+      unanswered++;
+    } else if (userAnswer === question.correctAnswer) {
+      correct++;
+    } else {
+      wrong++;
+    }
+  });
+
+  return {correct, wrong, unanswered};
+});
+
+const filteredQuestions = computed(() => {
+  if (!props.exam || reviewFilter.value === 'all') {
+    return props.exam?.questions.map((q, index) => ({...q, originalIndex: index})) || [];
+  }
+
+  return props.exam.questions
+      .map((q, index) => ({...q, originalIndex: index}))
+      .filter(q => {
+        const userAnswer = answers.value.get(q.id);
+
+        switch (reviewFilter.value) {
+          case 'correct':
+            return userAnswer === q.correctAnswer;
+          case 'wrong':
+            return userAnswer && userAnswer !== q.correctAnswer;
+          case 'unanswered':
+            return !userAnswer;
+          default:
+            return true;
+        }
+      });
+});
+
+const getQuestionStatus = (questionId: string) => {
+  const userAnswer = answers.value.get(questionId);
+  const question = props.exam?.questions.find(q => q.id === questionId);
+
+  if (!userAnswer) return 'unanswered';
+  return userAnswer === question?.correctAnswer ? 'correct' : 'wrong';
+};
+
+
+
+const selectAnswer = (answerId: string) => {
+  if (!currentQuestion.value) return;
+
+  // In review mode, don't allow changing answers
+  if (isReviewMode.value) {
+    return;
+  }
+
+  if (selectedAnswer.value === answerId) {
+    nextQuestion()
+    return
+  }
+
+  selectedAnswer.value = answerId;
+  track(currentQuestion.value.id, answerId);
+};
+
 
 const timeStringToSeconds = (timeString: string): number => {
   const [minutes, seconds] = timeString.split(':').map(Number);
@@ -68,6 +164,9 @@ const isTimeRunningOut = computed(() => {
   return timeLeft.value <= 300; // Last 5 minutes
 });
 
+const shouldShowExplanation = computed(() => {
+  return isReviewMode.value;
+});
 
 const startExam = (): void => {
   if (props.exam) {
@@ -75,6 +174,35 @@ const startExam = (): void => {
     timer.resume()
     isExamActive.value = true
   }
+};
+
+const retryExam = () => {
+  timer.reset()
+  reset()
+  selectedAnswer.value = undefined
+  currentQuestionIndex.value = 0
+  showResultsModal.value = false
+  isExamActive.value = true
+  timer.resume()
+}
+
+const startReviewMode = () => {
+  showResultsModal.value = false;
+  isExamActive.value = false;
+  isReviewMode.value = true;
+  currentQuestionIndex.value = 0;
+  showAnswerReview.value = true;
+  showQuestionPicker.value = true;
+};
+
+const exitReview = () => {
+  isReviewMode.value = false;
+  showAnswerReview.value = false;
+};
+
+
+const previewExam = (): void => {
+  showExamPreview.value = !showExamPreview.value;
 };
 
 const nextQuestion = () => {
@@ -101,14 +229,57 @@ const endExam = (reason: 'completed' | 'timeout' | 'manual') => {
   isExamActive.value = false;
   timer.pause();
 
-  // Here you can emit an event or handle exam completion
+  // Calculate results and show modal
+  examResults.value = calculateExamResults();
+  showResultsModal.value = true;
+
   console.log(`Exam ended: ${reason}`);
-  console.log(`Time elapsed: ${timer.elapsedTime}`);
-  console.log(`Questions answered: ${currentQuestionIndex.value + 1}/${examStats.value?.total}`);
 };
 
-const previewExam = (): void => {
-  showExamPreview.value = !showExamPreview.value;
+
+const handleFilterUpdate = (filter: string) => {
+  reviewFilter.value = filter as any;
+};
+
+const examResults = ref<any>(null);
+
+// Update your examResults computed to return the results object
+const calculateExamResults = () => {
+  if (!props.exam) return null;
+
+  let correctBasic = 0;
+  let correctSpecific = 0;
+  let totalCorrect = 0;
+
+  props.exam.questions.forEach(question => {
+    const userAnswer = answers.value.get(question.id);
+    const isCorrect = userAnswer === question.correctAnswer;
+
+    if (isCorrect) {
+      totalCorrect++;
+      if (question.originalQuestionNumber <= 72) {
+        correctBasic++;
+      } else {
+        correctSpecific++;
+      }
+    }
+  });
+
+  const passed =
+      correctBasic >= examStats.value?.passingScore.basic &&
+      correctSpecific >= examStats.value?.passingScore.specific &&
+      totalCorrect >= examStats.value?.passingScore.total;
+
+  return {
+    correctBasic,
+    correctSpecific,
+    totalCorrect,
+    totalQuestions: props.exam.questions.length,
+    basicQuestions: examStats.value?.basic || 0,
+    specificQuestions: examStats.value?.specific || 0,
+    passed,
+    answeredQuestions: answers.value.size
+  };
 };
 
 watch(timeLeft, (newTimeLeft) => {
@@ -117,13 +288,144 @@ watch(timeLeft, (newTimeLeft) => {
   }
 });
 
+watch(currentQuestionIndex, () => {
+  if (currentQuestion.value) {
+    selectedAnswer.value = answers.value.get(currentQuestion.value.id) || undefined;
+  }
+});
 </script>
 <template>
-  <div v-if="isExamActive" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-sm">
+  <div
+      v-if="isExamActive || isReviewMode || showResultsModal"
+      class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-sm">
     <div class="h-full flex flex-col">
+      <div v-if="isReviewMode" class="bg-blue-500/20 border-b border-blue-500/30 px-3 md:px-4 py-3">
+        <!-- Mobile Layout -->
+        <div class="md:hidden">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                    stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              <span class="text-blue-300 font-medium text-sm">Review Modus</span>
+            </div>
+            <button
+                class="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-slate-300 rounded text-xs transition-colors"
+                @click="exitReview"
+            >
+              Beenden
+            </button>
+          </div>
+          <!-- Stats row -->
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-1">
+                <div class="w-2 h-2 bg-emerald-500 rounded-full"/>
+                <span class="text-emerald-400">{{ reviewStats?.correct }}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="w-2 h-2 bg-red-500 rounded-full"/>
+                <span class="text-red-400">{{ reviewStats?.wrong }}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="w-2 h-2 bg-slate-500 rounded-full"/>
+                <span class="text-slate-400">{{ reviewStats?.unanswered }}</span>
+              </div>
+            </div>
+            <button
+                class="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-xs transition-colors"
+                @click="showQuestionPicker = !showQuestionPicker"
+            >
+              {{ showQuestionPicker ? 'Schließen' : 'Übersicht' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Desktop Layout -->
+        <div class="hidden md:flex items-center justify-between max-w-6xl mx-auto">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <span class="text-blue-300 font-medium">Antworten durchgehen</span>
+            <div class="flex items-center gap-4 text-xs ml-4">
+              <div class="flex items-center gap-1">
+                <div class="w-2 h-2 bg-emerald-500 rounded-full"/>
+                <span class="text-emerald-400">{{ reviewStats?.correct }} richtig</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="w-2 h-2 bg-red-500 rounded-full"/>
+                <span class="text-red-400">{{ reviewStats?.wrong }} falsch</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="w-2 h-2 bg-slate-500 rounded-full"/>
+                <span class="text-slate-400">{{ reviewStats?.unanswered }} offen</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+                class="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg text-sm transition-colors"
+                @click="showQuestionPicker = !showQuestionPicker"
+            >
+              {{ showQuestionPicker ? 'Schließen' : 'Übersicht' }}
+            </button>
+            <button
+                class="px-3 py-1 bg-slate-600 hover:bg-slate-500 text-slate-300 rounded-lg text-sm transition-colors"
+                @click="exitReview"
+            >
+              Beenden
+            </button>
+          </div>
+        </div>
+      </div>
       <!-- Header with timer and controls -->
-      <div class="bg-slate-800/90 border-b border-slate-700 px-6 py-4">
-        <div class="flex items-center justify-between">
+      <div v-if="isExamActive" class="bg-slate-800/90 border-b border-slate-700 px-3 md:px-6 py-3 md:py-4">
+        <!-- Mobile Layout -->
+        <div class="md:hidden">
+          <!-- Top row: Title and Exit button -->
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold text-white truncate flex-1 mr-3">{{ exam.title }}</h2>
+            <button
+                class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm flex-shrink-0"
+                @click="endExam('manual')"
+            >
+              Beenden
+            </button>
+          </div>
+
+          <!-- Bottom row: Progress, Question counter, and Timer -->
+          <div class="flex items-center gap-3">
+            <!-- Progress bar with question counter -->
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400">Frage {{ currentQuestionIndex + 1 }}/{{ examStats?.total }}</span>
+                <span class="text-xs font-mono font-bold" :class="isTimeRunningOut ? 'text-red-400' : 'text-green-400'">
+            {{ formattedTimeLeft }}
+          </span>
+              </div>
+              <div class="w-full bg-slate-700 rounded-full h-2">
+                <div
+                    class="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                    :style="{ width: `${progress}%` }"
+                />
+              </div>
+            </div>
+
+            <!-- Elapsed time (compact) -->
+            <div class="text-right flex-shrink-0">
+              <div class="text-xs text-slate-400">Elapsed</div>
+              <div class="text-sm font-mono font-bold text-blue-400">{{ timer.elapsedTime }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desktop Layout (original with minor tweaks) -->
+        <div class="hidden md:flex items-center justify-between">
           <div class="flex items-center gap-6">
             <h2 class="text-xl font-semibold text-white">{{ exam.title }}</h2>
             <div class="flex items-center gap-4">
@@ -170,51 +472,30 @@ watch(timeLeft, (newTimeLeft) => {
         </div>
       </div>
 
-      <!-- Question content -->
-      <div class="flex-1 overflow-auto p-6">
-        <div v-if="currentQuestion" class="max-w-4xl mx-auto">
-          <!-- Question -->
-          <div class="bg-slate-800/50 rounded-xl p-6 mb-6">
-            <div class="flex items-start gap-4">
-              <span
-                  class="w-8 h-8 bg-purple-500 text-white rounded-lg text-sm font-bold flex items-center justify-center flex-shrink-0">
-                {{ currentQuestionIndex + 1 }}
-              </span>
-              <div class="flex-1">
-                <h3 class="text-lg text-white mb-4">{{ currentQuestion.question }}</h3>
+      <QuestionContent
+          :question="currentQuestion" :selected="selectedAnswer" :mode="isReviewMode ? 'training' : 'exam'"
+          scroll
+          :show-explanation="shouldShowExplanation" @click:answer="selectAnswer"/>
 
-                <!-- Question images if any -->
-                <div v-if="currentQuestion.images?.length" class="mb-4">
-                  <img
-                      v-for="image in currentQuestion.images"
-                      :key="image"
-                      :src="image"
-                      :alt="`Question ${currentQuestionIndex + 1} image`"
-                      class="max-w-full h-auto rounded-lg"
-                  >
-                </div>
 
-                <!-- Answer options -->
-                <div class="space-y-3">
-                  <label
-                      v-for="(answer, index) in currentQuestion.answers"
-                      :key="index"
-                      class="flex items-start gap-3 p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors"
-                  >
-                    <input
-                        type="radio"
-                        :name="`question-${currentQuestion.id}`"
-                        :value="index"
-                        class="mt-1 text-purple-500 focus:ring-purple-500 focus:ring-offset-slate-800"
-                    >
-                    <span class="text-slate-200">{{ answer.text }}</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ExamResultModal
+          :show="showResultsModal" :results="examResults" :passing-score="examStats?.passingScore"
+          :time-elapsed="timer.elapsedTime.value" @close="showResultsModal = false" @review-answers="startReviewMode"
+          @retry-exam="retryExam"/>
+
+
+      <QuestionPicker
+          :show="showQuestionPicker"
+          :questions="isReviewMode ? filteredQuestions : exam.questions"
+          :current-question-index="currentQuestionIndex"
+          :mode="isReviewMode ? 'review' : 'exam'"
+          :user-answers="answers"
+          :filter="reviewFilter"
+          :stats="reviewStats"
+          @close="showQuestionPicker = false"
+          @go-to-question="goToQuestion"
+          @update-filter="handleFilterUpdate"
+      />
 
       <!-- Navigation -->
       <div class="bg-slate-800/90 border-t border-slate-700 px-2 md:px-6 py-4">
@@ -232,22 +513,19 @@ watch(timeLeft, (newTimeLeft) => {
           <!-- Question Navigation - Different layouts for mobile/desktop -->
           <div class="flex-1 flex items-center justify-center">
             <!-- Mobile: Simplified navigation -->
-            <div class="md:hidden flex items-center gap-2">
+            <button
+                class="md:hidden flex items-center gap-2"
+                @click="showQuestionPicker = !showQuestionPicker"
+            >
+
               <!-- Current question indicator -->
-              <div class="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1">
+              <span class="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1">
                 <span class="text-slate-400 text-sm">Frage</span>
                 <span class="text-white font-semibold">{{ currentQuestionIndex + 1 }}</span>
                 <span class="text-slate-400 text-sm">von {{ exam.questions.length }}</span>
-              </div>
+              </span>
 
-              <!-- Quick jump dropdown or input -->
-              <button
-                  @click="showQuestionPicker = !showQuestionPicker"
-                  class="w-8 h-8 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors"
-              >
-                ⋯
-              </button>
-            </div>
+            </button>
 
             <!-- Desktop: Show more question numbers with smart pagination -->
             <div class="hidden md:flex items-center gap-1">
@@ -341,31 +619,6 @@ watch(timeLeft, (newTimeLeft) => {
       </span>
           </button>
         </div>
-
-        <!-- Mobile Question Picker Dropdown -->
-        <div v-if="showQuestionPicker" class="md:hidden mt-4 bg-slate-700/50 rounded-lg p-4">
-          <div class="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto">
-            <button
-                v-for="(question, index) in exam.questions"
-                :key="question.id"
-                class="w-10 h-10 rounded text-sm font-medium transition-colors"
-                :class="[
-            index === currentQuestionIndex
-              ? 'bg-purple-500 text-white'
-              : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
-          ]"
-                @click="goToQuestion(index); showQuestionPicker = false"
-            >
-              {{ index + 1 }}
-            </button>
-          </div>
-          <button
-              @click="showQuestionPicker = false"
-              class="mt-3 w-full py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm"
-          >
-            Schließen
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -440,7 +693,7 @@ watch(timeLeft, (newTimeLeft) => {
       <!-- Action Buttons -->
       <div class="flex flex-col sm:flex-row gap-4">
         <button
-            class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 transform hover:scale-105"
+            class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25"
             @click="startExam">
           Prüfung starten
         </button>

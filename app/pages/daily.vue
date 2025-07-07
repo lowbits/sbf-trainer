@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import {$fetch} from "ofetch";
-import {computed, reactive, ref} from 'vue';
+import {reactive, ref} from 'vue';
 import type {Question} from "~~/server/assets/data/questions";
 import Card from "~/components/ui/cards/Card.vue";
 import CardHeader from "~/components/ui/cards/CardHeader.vue";
 import AudioPlayer from "~/components/AudioPlayers/AudioPlayer.vue";
 import ExamSimulator from "~/components/ExamSimulator.vue";
+import QuestionContent from "~/components/quiz/QuestionContent.vue";
+import Logo from "~/components/logos/Logo.vue";
 
 // Types
 interface User {
@@ -175,12 +177,7 @@ const upgradeToPro = (): void => {
 
         <!-- Header -->
         <div class="text-center">
-          <div class="inline-flex items-center gap-3 mb-4">
-            <img src="/favicon.svg" class="w-10 h-10" alt="sbf trainer icon">
-            <h1 class="text-4xl font-bold bg-gradient-to-r from-teal-400 to-teal-400 bg-clip-text text-transparent">
-              SBF Trainer
-            </h1>
-          </div>
+          <Logo/>
           <p class="text-slate-400 text-lg mb-2">Täglicher Prüfungsbegleiter</p>
           <p class="text-slate-500 text-sm">{{ formatDate(new Date()) }}</p>
         </div>
@@ -290,7 +287,7 @@ const upgradeToPro = (): void => {
           </div>
         </div>
 
-        <CollapsibleCard v-else-if="todaysPodcast" class="mt-8" default-open>
+        <CollapsibleCard v-else-if="todaysPodcast " class="mt-8" default-open>
           <template #trigger>
             <CardHeader
                 variant="teal"
@@ -421,186 +418,17 @@ const upgradeToPro = (): void => {
 
           <div class="space-y-6">
             <Card
-                v-for="(question, questionIndex) in podcastQuestions"
+                v-for="(question) in podcastQuestions"
                 :key="question.id"
                 variant="blue"
                 padding="narrow"
             >
-              <!-- Question Header -->
-              <div class="flex flex-col justify-start">
-                <div class="inline-flex items-center gap-2 mb-4">
-                      <span
-                          class="px-3 py-1 text-xs font-medium capitalize bg-teal-500/20 text-teal-300 rounded-full border border-teal-500/30">
-                        {{ question.metadata?.category || 'Nautik' }}
-                      </span>
-                  <span class="text-xs text-slate-400">Frage {{ questionIndex + 1 }}</span>
-                </div>
-                <h4 class="text-xl font-semibold text-slate-100 leading-snug text-pretty">
-                  {{ question.question }}
-                </h4>
-              </div>
-
-              <!-- Image Display -->
-              <div v-if="question.images?.length" class="mt-4 flex justify-center">
-                <div class="bg-white rounded-lg p-4 shadow-lg max-w-xs">
-                  <div class="flex gap-2">
-                    <img
-                        v-for="(img, index) in question.images"
-                        :key="index"
-                        :src="img"
-                        :alt="`${question.question} - Bild ${index + 1}`"
-                        :class="question.images.length === 1 ? 'w-full' : 'flex-1'"
-                        class="h-auto rounded max-h-48 object-contain"
-                    >
-                  </div>
-                </div>
-              </div>
-
-              <!-- Answer Grid -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <button
-                    v-for="(answer, answerIndex) in question.answers"
-                    :key="answer.id"
-                    :class="[
-                          'group relative p-4 text-left rounded-xl transition-colors duration-300 touch-manipulation',
-                          {
-                            // Normal state
-                            'bg-slate-700/50 hover:bg-teal-500/20 border border-slate-600/50 hover:border-teal-500/50 hover:shadow-lg': !questionAnswers[question.id],
-                            // Selected answer when not yet answered
-                            'bg-teal-500/20 border border-teal-500/50': !questionAnswers[question.id] && selectedAnswers[question.id] === answer.id,
-                            // Correct answer highlight (after answering)
-                            'bg-emerald-500/20 border border-emerald-500/50 shadow-lg shadow-emerald-500/20': questionAnswers[question.id] && answer.id === question.correctAnswer,
-                            // Wrong selected answer highlight (after answering)
-                            'bg-red-500/20 border border-red-500/50 shadow-lg shadow-red-500/20': questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer,
-                            // Other answers when answered (dimmed)
-                            'bg-slate-700/30 border border-slate-600/30 opacity-70': questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id && answer.id !== question.correctAnswer
-                          }
-                        ]"
-                    style="-webkit-tap-highlight-color: transparent;"
-                    :disabled="questionAnswers[question.id]"
-                    @click="selectQuestionAnswer(question.id, answer.id)"
-                >
-                      <span class="flex items-center gap-3">
-                        <span
-                            class="w-8 h-8 shrink-0 bg-gradient-to-r rounded-lg flex items-center justify-center font-bold text-sm"
-                            :class="{
-                              // Normal state
-                              'from-slate-600 to-slate-700 text-slate-300 group-hover:from-teal-500 group-hover:to-teal-600 group-hover:text-white': !questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id,
-                              // Selected (not answered)
-                              'from-teal-500 to-teal-600 text-white': !questionAnswers[question.id] && selectedAnswers[question.id] === answer.id,
-                              // Correct answer (answered)
-                              'from-emerald-500 to-emerald-600 text-white': questionAnswers[question.id] && answer.id === question.correctAnswer,
-                              // Wrong selected answer (answered)
-                              'from-red-500 to-red-600 text-white': questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer,
-                              // Other answers (answered)
-                              'from-slate-600 to-slate-700 text-slate-400': questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id && answer.id !== question.correctAnswer
-                            }"
-                        >
-                          {{ String.fromCharCode(65 + answerIndex) }}
-
-                          <!-- Correct/Wrong icons -->
-                          <span
-                              v-if="questionAnswers[question.id] && answer.id === question.correctAnswer"
-                              class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                            <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                            </svg>
-                          </span>
-
-                          <span
-                              v-if="questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer"
-                              class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                            <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                  stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                  d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                          </span>
-                        </span>
-
-                        <span
-                            class="text-sm leading-relaxed"
-                            :class="{
-                              'text-slate-200': !questionAnswers[question.id],
-                              'text-emerald-100 font-medium': questionAnswers[question.id] && answer.id === question.correctAnswer,
-                              'text-red-100': questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer,
-                              'text-slate-400': questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id && answer.id !== question.correctAnswer
-                            }"
-                        >
-                          {{ answer.text }}
-                        </span>
-                      </span>
-
-                  <!-- Hover overlay -->
-                  <span
-                      v-if="!questionAnswers[question.id]"
-                      class="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-teal-600/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  />
-                </button>
-              </div>
-
-              <!-- Explanation (shown after answering) -->
-              <div
-                  v-if="questionAnswers[question.id]"
-                  class="mt-6 p-6 rounded-xl backdrop-blur-sm animate-slide-up"
-                  :class="{
-                        'bg-emerald-500/10 border border-emerald-500/30': selectedAnswers[question.id] === question.correctAnswer,
-                        'bg-red-500/10 border border-red-500/30': selectedAnswers[question.id] !== question.correctAnswer
-                      }"
-              >
-                <div class="flex items-start gap-4">
-                  <div
-                      class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      :class="{
-                          'bg-emerald-500/20': selectedAnswers[question.id] === question.correctAnswer,
-                          'bg-red-500/20': selectedAnswers[question.id] !== question.correctAnswer
-                        }"
-                  >
-                    <svg
-                        class="w-5 h-5"
-                        :class="{
-                            'text-emerald-400': selectedAnswers[question.id] === question.correctAnswer,
-                            'text-red-400': selectedAnswers[question.id] !== question.correctAnswer
-                          }"
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path
-                          v-if="selectedAnswers[question.id] === question.correctAnswer"
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M5 13l4 4L19 7"
-                      />
-                      <path
-                          v-else
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h5
-                        class="font-semibold mb-2"
-                        :class="{
-                            'text-emerald-300': selectedAnswers[question.id] === question.correctAnswer,
-                            'text-red-300': selectedAnswers[question.id] !== question.correctAnswer
-                          }"
-                    >
-                      {{
-                        selectedAnswers[question.id] === question.correctAnswer ? 'Richtig!' : 'Nicht ganz richtig'
-                      }}
-                    </h5>
-                    <p class="text-slate-200 text-sm leading-relaxed mb-3">{{ question.explanation }}</p>
-                    <div
-                        v-if="selectedAnswers[question.id] !== question.correctAnswer"
-                        class="flex items-center gap-2 text-xs">
-                          <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded">
-                            Richtige Antwort: {{
-                              String.fromCharCode(65 + question.answers.findIndex(a => a.id === question.correctAnswer))
-                            }}
-                          </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <QuestionContent
+                  :wrap="false"
+                  :question="question" show-category mode="training"
+                  :selected="selectedAnswers[question.id]"
+                  :show-explanation="questionAnswers[question.id]"
+                  @click:answer="(answerId) => selectQuestionAnswer(question.id, answerId)"/>
             </Card>
           </div>
         </CollapsibleCard>
@@ -674,8 +502,8 @@ const upgradeToPro = (): void => {
                       class="w-10 h-10 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
-stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                   </div>
                   <div>
@@ -692,8 +520,8 @@ stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       class="w-10 h-10 bg-gradient-to-r from-blue-500/20 to-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
-stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                   </div>
                   <div>
@@ -711,8 +539,8 @@ stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     class="w-10 h-10 bg-gradient-to-r from-orange-500/20 to-amber-600/20 rounded-lg flex items-center justify-center">
                   <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
-stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                   </svg>
                 </div>
                 <h5 class="font-semibold text-orange-300 text-lg">Anleitung</h5>
@@ -748,8 +576,8 @@ stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   class="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
-stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                      stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                 </svg>
               </div>
               <p class="text-orange-200 text-sm font-medium">
@@ -798,21 +626,5 @@ stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
 
 .animate-bounce {
   animation: gentle-bounce 2s ease-in-out infinite;
-}
-
-/* Slide up animation */
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
 }
 </style>
