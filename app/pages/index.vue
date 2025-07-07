@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {Question} from "~~/server/assets/data/questions"
 import StepIndicator from "~/components/ui/stepIndicator/StepIndicator.vue"
+import {useTimer} from "~/composables/useTimer";
 
 // Settings
 const settings = reactive({
@@ -8,8 +9,8 @@ const settings = reactive({
 })
 
 // Timer
-const startTime = ref(Date.now())
-const timestamp = useTimestamp({interval: 1000, controls: true})
+const timer = useTimer()
+
 
 const currentQuestionIndex = ref(0)
 const selectedAnswer = ref<string>()
@@ -23,7 +24,7 @@ const userAnswers = ref<Map<number, string>>(new Map())
 // Stats
 const wrongQuestions = ref<Set<number>>(new Set())
 
-const {data, pending: isLoading, refresh} = useFetch<{questions: Question[]}>('/api/quiz', {server: false})
+const {data, pending: isLoading, refresh} = useFetch<{ questions: Question[] }>('/api/quiz', {server: false})
 
 const questions = computed(() => data.value?.questions ?? [])
 
@@ -35,13 +36,6 @@ const currentQuestion = computed(() => {
   return question
 })
 
-const elapsedTime = computed(() => {
-  const elapsed = timestamp.timestamp.value - startTime.value
-  const seconds = Math.floor(elapsed / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
-})
 
 const correctAnswers = computed(() => {
   let count = 0
@@ -58,7 +52,6 @@ const accuracy = computed(() => {
   const total = correctAnswers.value + wrongAnswersCount.value
   return total > 0 ? Math.round((correctAnswers.value / total) * 100) : 0
 })
-
 
 
 const getIdByIndex = (index: number) => ['A', 'B', 'C', 'D'][index]
@@ -116,7 +109,7 @@ const moveToNextQuestion = () => {
     showExplanation.value = userAnswer !== undefined && userAnswer !== correctAnswer
   } else {
     isQuizCompleted.value = true
-    timestamp.pause()
+    timer.pause()
   }
 }
 
@@ -128,13 +121,14 @@ const restartQuiz = async () => {
   wrongQuestions.value.clear()
   isQuizCompleted.value = false
   userAnswers.value.clear()
-  startTime.value = Date.now()
-  timestamp.resume()
+  timer.reset()
 }
 </script>
 <template>
   <div>
-    <div v-if="isLoading || !data || !currentQuestion" class="relative z-10 min-h-screen flex justify-center items-center">
+    <div
+        v-if="isLoading || !data || !currentQuestion"
+        class="relative z-10 min-h-screen flex justify-center items-center">
       <div class="text-center">
         <div class="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
           <svg class="w-8 h-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -378,7 +372,7 @@ const restartQuiz = async () => {
             <p>🎯 Richtige Antworten: <span class="text-teal-400 font-medium">{{
                 correctAnswers
               }}/{{ settings.questions }}</span> • ⏱️ Zeit: <span
-                class="text-orange-400 font-medium tabular-nums">{{ elapsedTime }}</span></p>
+                class="text-orange-400 font-medium tabular-nums">{{ timer.elapsedTime }}</span></p>
           </div>
         </div>
       </div>
@@ -417,7 +411,7 @@ const restartQuiz = async () => {
                   </div>
                   <div class="flex justify-between">
                     <span class="text-slate-300">Zeit:</span>
-                    <span class="text-blue-400 font-bold tabular-nums">{{ elapsedTime }}</span>
+                    <span class="text-blue-400 font-bold tabular-nums">{{ timer.elapsedTime }}</span>
                   </div>
                 </div>
 
@@ -436,7 +430,7 @@ const restartQuiz = async () => {
       </Transition>
     </div>
 
-    <NuxtLink  class="absolute right-0 bottom-0 z-50" to="daily">Daily Podcast</NuxtLink>
+    <NuxtLink class="absolute right-0 bottom-0 z-50" to="daily">Daily Podcast</NuxtLink>
   </div>
 </template>
 

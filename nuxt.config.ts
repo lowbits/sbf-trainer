@@ -13,7 +13,7 @@ export default defineNuxtConfig({
         head: {
             meta: [
                 {name: 'theme-color', content: '#0f172b'}
-            ]
+            ],
         }
     },
 

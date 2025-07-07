@@ -101,10 +101,10 @@ export const ExamSheetMetadataSchema = z.object({
 })
 
 export const ExamSheetSchema = z.object({
-    id: z.string().regex(/^exam-sheet-\d{2}$/, 'Exam sheet ID must follow format: exam-sheet-01'),
+    id: z.string().regex(/^exam-sheet-\d{2}$/, 'ExamSimulator sheet ID must follow format: exam-sheet-01'),
     title: z.string(),
     description: z.string(),
-    questions: z.array(ExamQuestionSchema).length(30, 'Exam sheet must have exactly 30 questions'),
+    questions: z.array(ExamQuestionSchema).length(30, 'ExamSimulator sheet must have exactly 30 questions'),
     metadata: ExamSheetMetadataSchema
 }).refine(
     data => {
@@ -112,7 +112,7 @@ export const ExamSheetSchema = z.object({
         const specificCount = data.questions.filter(q => q.originalQuestionNumber > 72).length
         return basicCount === 7 && specificCount === 23
     },
-    'Exam sheet must have exactly 7 basic questions and 23 specific questions'
+    'ExamSimulator sheet must have exactly 7 basic questions and 23 specific questions'
 )
 
 export const ValidationResultSchema = z.object({

@@ -1,5 +1,5 @@
 // server/utils/sbfExamGenerator.ts
-// SBF Exam Sheet Generator with Zod validation for Nuxt 3
+// SBF ExamSimulator Sheet Generator with Zod validation for Nuxt 3
 // Based on official regulation from March 12, 2012
 
 import { z } from 'zod'

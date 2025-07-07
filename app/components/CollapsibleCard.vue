@@ -11,7 +11,7 @@ const onEnter = (el: Element) => {
   element.style.height = '0';
   element.style.paddingTop = '0';
   element.style.paddingBottom = '0';
-  element.offsetHeight; // Force reflow
+  void element.offsetHeight;
   element.style.height = element.scrollHeight + 'px';
   element.style.paddingTop = '';
   element.style.paddingBottom = '';
@@ -25,7 +25,7 @@ const onAfterEnter = (el: Element) => {
 const onLeave = (el: Element) => {
   const element = el as HTMLElement;
   element.style.height = element.scrollHeight + 'px';
-  element.offsetHeight; // Force reflow
+  void element.offsetHeight;
   element.style.height = '0';
   element.style.paddingTop = '0';
   element.style.paddingBottom = '0';
@@ -43,14 +43,12 @@ const onAfterLeave = (el: Element) => {
 
   <Card>
     <template #header>
-      <div class="relative">
+      <div class="relative" @click="isCollapsed = !isCollapsed">
         <slot name="trigger"/>
         <div class="absolute inset-y-0  right-0 inline-flex items-center justify-center px-4">
-
-          <button @click="isCollapsed = !isCollapsed">
-            <Icon name="lucide:chevron-down" size="24" class="transition-transform duration-300"
-                  :class="{'-rotate-180': isCollapsed}"/>
-          </button>
+          <Icon
+              name="lucide:chevron-down" size="24" class="transition-transform duration-300"
+              :class="{'-rotate-180': isCollapsed}"/>
         </div>
       </div>
     </template>

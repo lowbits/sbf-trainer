@@ -5,6 +5,7 @@ import type {Question} from "~~/server/assets/data/questions";
 import Card from "~/components/ui/cards/Card.vue";
 import CardHeader from "~/components/ui/cards/CardHeader.vue";
 import AudioPlayer from "~/components/AudioPlayers/AudioPlayer.vue";
+import ExamSimulator from "~/components/ExamSimulator.vue";
 
 // Types
 interface User {
@@ -71,23 +72,6 @@ const questionAnswers = ref<Record<string, boolean>>({});
 
 const podcastKnot = ref<Knot>();
 const todaysExam = ref<ExamSheet | undefined>();
-const showExamPreview = ref<boolean>(false);
-
-
-const examStats = computed(() => {
-  if (!todaysExam.value) return null;
-
-  const basicQuestions = todaysExam.value.questions.filter(q => q.originalQuestionNumber <= 72);
-  const specificQuestions = todaysExam.value.questions.filter(q => q.originalQuestionNumber > 72);
-
-  return {
-    total: todaysExam.value.questions.length,
-    basic: basicQuestions.length,
-    specific: specificQuestions.length,
-    timeLimit: todaysExam.value.metadata.timeLimit,
-    passingScore: todaysExam.value.metadata.passingScore
-  };
-});
 
 // Utility methods
 const formatDate = (date: Date): string => {
@@ -162,22 +146,6 @@ const selectQuestionAnswer = (questionId: string, answerId: string): void => {
 const upgradeToPro = (): void => {
   navigateTo('/pricing');
 };
-
-
-// NEW: Exam navigation methods
-const startExam = (): void => {
-  if (todaysExam.value) {
-    // Navigate to exam page with the exam ID
-    navigateTo(`/exam/${todaysExam.value.id}`);
-  }
-};
-
-const previewExam = (): void => {
-  showExamPreview.value = !showExamPreview.value;
-};
-
-
-// Lifecycle hooks
 
 </script>
 
@@ -322,7 +290,7 @@ const previewExam = (): void => {
           </div>
         </div>
 
-        <CollapsibleCard v-else-if="todaysPodcast" default-open>
+        <CollapsibleCard v-else-if="todaysPodcast" class="mt-8" default-open>
           <template #trigger>
             <CardHeader
                 variant="teal"
@@ -386,9 +354,6 @@ const previewExam = (): void => {
             </div>
           </div>
         </CollapsibleCard>
-
-
-
 
 
         <!-- Generate Button -->
@@ -684,7 +649,7 @@ const previewExam = (): void => {
                       :src="podcastKnot.image"
                       :alt="`${podcastKnot.name} Knoten`"
                       class="max-w-full h-auto max-h-48 rounded-lg"
-                  />
+                  >
                 </div>
                 <p class="text-slate-400 text-sm mt-2">{{ podcastKnot.name }}</p>
               </div>
@@ -708,7 +673,8 @@ const previewExam = (): void => {
                   <div
                       class="w-10 h-10 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      <path
+stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                   </div>
@@ -725,7 +691,8 @@ const previewExam = (): void => {
                   <div
                       class="w-10 h-10 bg-gradient-to-r from-blue-500/20 to-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      <path
+stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                   </div>
@@ -743,7 +710,8 @@ const previewExam = (): void => {
                 <div
                     class="w-10 h-10 bg-gradient-to-r from-orange-500/20 to-amber-600/20 rounded-lg flex items-center justify-center">
                   <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    <path
+stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                   </svg>
                 </div>
@@ -779,7 +747,8 @@ const previewExam = (): void => {
               <div
                   class="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  <path
+stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                 </svg>
               </div>
@@ -794,121 +763,7 @@ const previewExam = (): void => {
         </CollapsibleCard>
 
 
-        <CollapsibleCard v-if="todaysExam" class="mt-8" variant="purple" padding="narrow">
-          <template #trigger>
-            <CardHeader
-                variant="purple"
-                :title="todaysExam.title"
-                :subtitle="`${examStats?.total} Fragen • ${examStats?.timeLimit} Minuten`"
-            >
-              <template #icon>
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-              </template>
-            </CardHeader>
-          </template>
-
-          <div class="py-6 space-y-6">
-            <!-- Exam Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
-                <div class="text-2xl font-bold text-purple-400">{{ examStats?.total }}</div>
-                <div class="text-xs text-slate-400">Fragen</div>
-              </div>
-              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
-                <div class="text-2xl font-bold text-purple-400">{{ examStats?.basic }}</div>
-                <div class="text-xs text-slate-400">Basis</div>
-              </div>
-              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
-                <div class="text-2xl font-bold text-purple-400">{{ examStats?.specific }}</div>
-                <div class="text-xs text-slate-400">Spezifisch</div>
-              </div>
-              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
-                <div class="text-2xl font-bold text-purple-400">{{ examStats?.timeLimit }}</div>
-                <div class="text-xs text-slate-400">Minuten</div>
-              </div>
-            </div>
-
-            <!-- Exam Description -->
-            <div class="p-4 bg-slate-700/20 rounded-lg">
-              <p class="text-slate-300 text-sm">{{ todaysExam.description }}</p>
-            </div>
-
-            <!-- Passing Requirements -->
-            <div class="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-              <h4 class="font-semibold text-purple-300 mb-3">Bestehensvoraussetzungen</h4>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Basisfragen:</span>
-                  <span class="text-purple-300 font-medium">{{ examStats?.passingScore.basic }}/{{
-                      examStats?.basic
-                    }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Spezifische:</span>
-                  <span class="text-purple-300 font-medium">{{
-                      examStats?.passingScore.specific
-                    }}/{{ examStats?.specific }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Gesamt:</span>
-                  <span class="text-purple-300 font-medium">{{ examStats?.passingScore.total }}/{{
-                      examStats?.total
-                    }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row gap-4">
-              <button
-                  class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 transform hover:scale-105"
-                  @click="startExam">
-                Prüfung starten
-              </button>
-              <button
-                  class="px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600 text-slate-300 rounded-xl font-medium transition-all duration-300"
-                  @click="previewExam">
-                {{ showExamPreview ? 'Vorschau ausblenden' : 'Fragen-Vorschau' }}
-              </button>
-            </div>
-
-            <!-- Exam Preview -->
-            <div v-if="showExamPreview" class="border-t border-slate-700/50 pt-6">
-              <h4 class="font-semibold text-slate-200 mb-4">Fragen-Überblick</h4>
-              <div class="space-y-3 max-h-64 overflow-y-auto">
-                <div
-                    v-for="(question, index) in todaysExam.questions.slice(0, 5)"
-                    :key="question.id"
-                    class="p-3 bg-slate-700/20 rounded-lg">
-                  <div class="flex items-start gap-3">
-                    <span
-                        class="w-6 h-6 bg-purple-500/20 text-purple-300 rounded text-xs font-medium flex items-center justify-center flex-shrink-0">
-                      {{ index + 1 }}
-                    </span>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-slate-300 text-sm line-clamp-2">{{ question.question }}</p>
-                      <div class="flex items-center gap-2 mt-2">
-                        <span class="px-2 py-1 text-xs bg-slate-600/50 text-slate-400 rounded">
-                          {{ question.originalQuestionNumber <= 72 ? 'Basis' : 'Spezifisch' }}
-                        </span>
-                        <span v-if="question.images?.length"
-                              class="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded">
-                          📸 Mit Bild
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div v-if="todaysExam.questions.length > 5" class="text-center text-slate-400 text-sm">
-                  ... und {{ todaysExam.questions.length - 5 }} weitere Fragen
-                </div>
-              </div>
-            </div>
-          </div>
-        </CollapsibleCard>
+        <ExamSimulator v-if="todaysExam" :exam="todaysExam"/>
       </div>
     </div>
   </div>
