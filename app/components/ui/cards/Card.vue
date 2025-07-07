@@ -1,8 +1,7 @@
-<!-- components/ui/cards/Card.vue -->
 <script setup lang="ts">
 
 interface Props {
-  variant?: 'default' | 'glow' | 'orange' | 'teal' | 'blue' | 'green' |'purple'
+  variant?: 'default' | 'glow' | 'orange' | 'teal' | 'blue' | 'green' | 'purple'
   padding?: 'narrow' | 'default'
   glow?: boolean
 }

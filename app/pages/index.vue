@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import Logo from "~/components/logos/Logo.vue";
 import Card from "~/components/ui/cards/Card.vue";
+import CardHeader from "~/components/ui/cards/CardHeader.vue";
 
 definePageMeta({
   middleware: 'auth'
@@ -15,16 +16,12 @@ if (!userToken.value) {
 </script>
 <template>
   <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-4xl w-full">
+    <div class="max-w-6xl w-full">
       <!-- Hero Section -->
       <div class="text-center mb-12">
         <div
             class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-teal-500/20 to-blue-500/20 rounded-full mb-6">
-          <svg class="w-10 h-10 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
-          </svg>
+          <Logo :full="false" />
         </div>
         <h1 class="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
           Willkommen zurück, Kapitän! ⚓
@@ -35,14 +32,14 @@ if (!userToken.value) {
       </div>
 
       <!-- Action Cards -->
-      <div class="grid md:grid-cols-2 gap-8">
+      <div class="grid lg:grid-cols-2 gap-8">
         <!-- Daily Challenge Card -->
-        <NuxtLink to="/daily" class="block group">
+        <NuxtLink to="/daily" class="block group h-full">
           <Card
-              variant="teal" :glow="true"
-              class="transition-all duration-500 group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-teal-500/25">
+              variant="purple" glow
+              class="h-full transition-all duration-500 group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-purple-500/25">
             <template #header>
-              <CardHeader variant="teal" title="Daily Challenge" subtitle="Dein komplettes Lernpaket für heute">
+              <CardHeader variant="purple" title="Daily Challenge" subtitle="Dein komplettes Lernpaket für heute">
                 <template #icon>
                   <svg
                       class="w-8 h-8 text-white group-hover:animate-pulse" fill="none" stroke="currentColor"
@@ -55,12 +52,12 @@ if (!userToken.value) {
               </CardHeader>
             </template>
 
-            <div class="space-y-6">
+            <div class="space-y-6 flex flex-col h-full">
               <!-- Features Grid -->
               <div class="grid grid-cols-3 gap-4">
                 <div class="text-center p-4 bg-slate-700/30 rounded-xl group-hover:bg-slate-600/40 transition-colors">
-                  <div class="w-12 h-12 bg-teal-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                           stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M9.536 8.464a5 5 0 000 7.072M6.708 6.636a9 9 0 000 14.142"/>
@@ -71,8 +68,8 @@ if (!userToken.value) {
                 </div>
 
                 <div class="text-center p-4 bg-slate-700/30 rounded-xl group-hover:bg-slate-600/40 transition-colors">
-                  <div class="w-12 h-12 bg-teal-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                           stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -83,8 +80,8 @@ if (!userToken.value) {
                 </div>
 
                 <div class="text-center p-4 bg-slate-700/30 rounded-xl group-hover:bg-slate-600/40 transition-colors">
-                  <div class="w-12 h-12 bg-teal-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                           stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -95,17 +92,20 @@ if (!userToken.value) {
                 </div>
               </div>
 
+              <!-- Spacer für gleiche Höhe -->
+              <div class="flex-1"></div>
+
               <!-- CTA -->
               <div
-                  class="flex items-center justify-between p-4 bg-gradient-to-r from-teal-500/10 to-transparent rounded-xl border border-teal-500/20">
+                  class="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-transparent rounded-xl border border-purple-500/20">
                 <div>
-                  <p class="text-teal-300 font-medium">Heute verfügbar</p>
+                  <p class="text-purple-300 font-medium">Heute verfügbar</p>
                   <p class="text-xs text-slate-400">Komplett kostenlos</p>
                 </div>
                 <div
-                    class="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center group-hover:bg-teal-500/30 transition-colors">
+                    class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
                   <svg
-                      class="w-4 h-4 text-teal-400 transform group-hover:translate-x-0.5 transition-transform"
+                      class="w-4 h-4 text-purple-400 transform group-hover:translate-x-0.5 transition-transform"
                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                   </svg>
@@ -118,10 +118,10 @@ if (!userToken.value) {
         <!-- Schnelle Welle Card -->
         <NuxtLink to="/schnelle-welle" class="block group">
           <Card
-              variant="purple" :glow="true"
-              class="transition-all duration-500 group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-purple-500/25">
+              variant="blue" :glow="true"
+              class="h-full transition-all duration-500 group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-blue-500/25">
             <template #header>
-              <CardHeader variant="purple" title="Schnelle Welle" subtitle="Quick Quiz für zwischendurch">
+              <CardHeader variant="blue" title="Schnelle Welle" subtitle="Quick Quiz für zwischendurch">
                 <template #icon>
                   <svg
                       class="w-8 h-8 text-white group-hover:animate-bounce" fill="none" stroke="currentColor"
@@ -134,42 +134,45 @@ if (!userToken.value) {
               </CardHeader>
             </template>
 
-            <div class="space-y-6">
+            <div class="space-y-6 flex flex-col h-full">
               <!-- Quick Stats -->
               <div class="grid grid-cols-2 gap-4">
                 <div class="text-center p-4 bg-slate-700/30 rounded-xl group-hover:bg-slate-600/40 transition-colors">
-                  <div class="text-2xl font-bold text-purple-400 mb-1">5min</div>
+                  <div class="text-2xl font-bold text-blue-400 mb-1">5min</div>
                   <p class="text-xs text-slate-400">Schnelle Runden</p>
                 </div>
                 <div class="text-center p-4 bg-slate-700/30 rounded-xl group-hover:bg-slate-600/40 transition-colors">
-                  <div class="text-2xl font-bold text-purple-400 mb-1">📱</div>
+                  <div class="text-2xl font-bold text-blue-400 mb-1">📱</div>
                   <p class="text-xs text-slate-400">Überall lernen</p>
                 </div>
               </div>
 
               <!-- Fun Fact -->
               <div
-                  class="p-4 bg-gradient-to-r from-purple-500/10 to-transparent rounded-xl border border-purple-500/20">
+                  class="p-4 bg-gradient-to-r from-blue-500/10 to-transparent rounded-xl border border-blue-500/20">
                 <div class="flex items-center gap-3 mb-2">
-                  <div class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
                     <span class="text-sm">🚽</span>
                   </div>
-                  <h4 class="font-semibold text-purple-300">Perfekt für das stille Örtchen</h4>
+                  <h4 class="font-semibold text-blue-300">Perfekt für das stille Örtchen</h4>
                 </div>
                 <p class="text-xs text-slate-400">Nutze jede freie Minute zum Lernen - selbst die privatesten!</p>
               </div>
 
+              <!-- Spacer für gleiche Höhe -->
+              <div class="flex-1"></div>
+
               <!-- CTA -->
               <div
-                  class="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-transparent rounded-xl border border-purple-500/20">
+                  class="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500/10 to-transparent rounded-xl border border-blue-500/20">
                 <div>
-                  <p class="text-purple-300 font-medium">Jederzeit verfügbar</p>
+                  <p class="text-blue-300 font-medium">Jederzeit verfügbar</p>
                   <p class="text-xs text-slate-400">Keine Vorbereitung nötig</p>
                 </div>
                 <div
-                    class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
+                    class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
                   <svg
-                      class="w-4 h-4 text-purple-400 transform group-hover:translate-x-0.5 transition-transform"
+                      class="w-4 h-4 text-blue-400 transform group-hover:translate-x-0.5 transition-transform"
                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                   </svg>
