@@ -173,7 +173,7 @@ export function createExamSheet(
                 specific: EXAM_CONSTANTS.PASSING_SCORES.SPECIFIC_REQUIRED,
                 total: EXAM_CONSTANTS.PASSING_SCORES.TOTAL_REQUIRED
             },
-            createdAt: new Date()
+            createdAt: new Date().toString()
         }
     }
 

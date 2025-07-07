@@ -35,4 +35,6 @@ export default defineEventHandler(async (event) => {
 
         return podcastResponseSchema.parse(cachedResponse);
     }
+
+    return null
 })
