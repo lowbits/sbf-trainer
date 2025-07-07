@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import {$fetch} from "ofetch";
-import {computed, nextTick, onMounted, reactive, ref} from 'vue';
+import {reactive, ref} from 'vue';
 import type {Question} from "~~/server/assets/data/questions";
 import Card from "~/components/ui/cards/Card.vue";
 import CardHeader from "~/components/ui/cards/CardHeader.vue";
+import AudioPlayer from "~/components/AudioPlayers/AudioPlayer.vue";
+import ExamSimulator from "~/components/ExamSimulator.vue";
+import QuestionContent from "~/components/quiz/QuestionContent.vue";
+import Logo from "~/components/logos/Logo.vue";
 
 // Types
 interface User {
@@ -41,13 +45,15 @@ interface PodcastData {
   cached: boolean;
 }
 
-interface PodcastHistoryItem {
-  date: string;
-  audioUrl: string;
-  title: string;
-  duration: string;
-  questionsCount: number;
+
+interface PodcastResponse {
+  success: boolean;
+  podcast: PodcastData;
+  questions: Question[];
+  knot?: Knot;
+  exam?: ExamSheet; // NEW: Include exam in response
 }
+
 
 // Mock user data
 const user = reactive<User>({
@@ -56,35 +62,18 @@ const user = reactive<User>({
 });
 
 // Reactive data
-const loading = ref<boolean>(false);
 const generating = ref<boolean>(false);
 const error = ref<string | null>(null);
 const todaysPodcast = ref<PodcastData | null>(null);
 const showScript = ref<boolean>(false);
 
 // Podcast questions data
-const podcastQuestions = ref<any[]>([]);
+const podcastQuestions = ref<Question[]>([]);
 const selectedAnswers = ref<Record<string, string>>({});
 const questionAnswers = ref<Record<string, boolean>>({});
 
 const podcastKnot = ref<Knot>();
-
-// Audio player state
-const audioPlayer = ref<HTMLAudioElement | null>(null);
-const isPlaying = ref<boolean>(false);
-const currentTime = ref<number>(0);
-const duration = ref<number>(0);
-const playbackSpeed = ref<string>('1');
-
-// Volume controls
-const volume = ref<number>(1);
-const isMuted = ref<boolean>(false);
-const previousVolume = ref<number>(1);
-
-// Computed
-const progressPercentage = computed<number>(() => {
-  return duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0;
-});
+const todaysExam = ref<ExamSheet | undefined>();
 
 // Utility methods
 const formatDate = (date: Date): string => {
@@ -96,11 +85,6 @@ const formatDate = (date: Date): string => {
   }).format(date);
 };
 
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
 
 // API methods
 const generatePodcast = async (): Promise<void> => {
@@ -108,17 +92,20 @@ const generatePodcast = async (): Promise<void> => {
   error.value = null;
 
   try {
-    const result = await $fetch<{
-      podcast: PodcastData;
-      questions: Question[];
-      knot?: Knot;
-    }>('/api/podcast/generate', {
+    const result = await $fetch<PodcastResponse>('/api/podcast/generate', {
       method: 'POST'
     });
 
     todaysPodcast.value = result.podcast;
     podcastQuestions.value = result.questions;
     podcastKnot.value = result.knot
+
+    console.log(result);
+
+    // NEW: Handle exam data
+    if (result.exam) {
+      todaysExam.value = result.exam;
+    }
 
     // Reset question states
     selectedAnswers.value = {};
@@ -132,132 +119,22 @@ const generatePodcast = async (): Promise<void> => {
   }
 };
 
-const loadTodaysPodcast = async (): Promise<void> => {
-  loading.value = true;
-  try {
-    const result = await $fetch<{
-      podcast: PodcastData;
-      questions: any[];
-      knot: Knot;
-    }>('/api/podcast/today');
 
-    if (result) {
-      todaysPodcast.value = result.podcast;
-      podcastQuestions.value = result.questions;
-      podcastKnot.value = result.knot;
+const {pending: loadingToday, data: todayData} = await useLazyFetch<PodcastResponse>('/api/podcast/today');
 
-      // Reset question states
-      selectedAnswers.value = {};
-      questionAnswers.value = {};
-    }
-  } catch (err) {
-    console.error('Error loading today\'s podcast:', err);
-  } finally {
-    loading.value = false;
+watch(todayData, (newData) => {
+  if (newData) {
+    todaysPodcast.value = newData.podcast;
+    podcastQuestions.value = newData.questions;
+    podcastKnot.value = newData.knot;
+    todaysExam.value = newData.exam;
+
+    // Reset question states
+    selectedAnswers.value = {};
+    questionAnswers.value = {};
   }
-};
+}, {immediate: true});
 
-const loadPodcastHistory = async (): Promise<void> => {
-  try {
-    /*
-    const history = await $fetch<PodcastHistoryItem[]>('/api/podcast/history');
-    podcastHistory.value = history;
-
-     */
-  } catch (err) {
-    console.error('Error loading podcast history:', err);
-  }
-};
-
-// Audio player methods
-const togglePlayPause = (): void => {
-  const player = audioPlayer.value;
-  if (!player) return;
-
-  if (isPlaying.value) {
-    player.pause();
-  } else {
-    player.play();
-  }
-};
-
-const seekBackward = (): void => {
-  const player = audioPlayer.value;
-  if (player) {
-    player.currentTime = Math.max(0, player.currentTime - 10);
-  }
-};
-
-const seekForward = (): void => {
-  const player = audioPlayer.value;
-  if (player) {
-    player.currentTime = Math.min(duration.value, player.currentTime + 10);
-  }
-};
-
-const seekToPosition = (event: MouseEvent): void => {
-  const progressBar = event.currentTarget as HTMLElement;
-  const clickPosition = (event.offsetX / progressBar.offsetWidth);
-  const player = audioPlayer.value;
-  if (player) {
-    player.currentTime = clickPosition * duration.value;
-  }
-};
-
-const changePlaybackSpeed = (): void => {
-  const player = audioPlayer.value;
-  if (player) {
-    player.playbackRate = parseFloat(playbackSpeed.value);
-  }
-};
-
-// Volume control methods
-const updateVolume = (): void => {
-  const player = audioPlayer.value;
-  if (player) {
-    player.volume = volume.value;
-    isMuted.value = volume.value === 0;
-  }
-};
-
-const toggleMute = (): void => {
-  if (isMuted.value || volume.value === 0) {
-    volume.value = previousVolume.value;
-    isMuted.value = false;
-  } else {
-    previousVolume.value = volume.value;
-    volume.value = 0;
-    isMuted.value = true;
-  }
-  updateVolume();
-};
-
-// Audio event handlers
-const onPlay = (): void => {
-  isPlaying.value = true;
-};
-
-const onPause = (): void => {
-  isPlaying.value = false;
-};
-
-const onEnded = (): void => {
-  isPlaying.value = false;
-};
-
-const onLoadedMetadata = (): void => {
-  const player = audioPlayer.value;
-  if (player) {
-    duration.value = player.duration || 0;
-  }
-};
-
-const onTimeUpdate = (): void => {
-  const player = audioPlayer.value;
-  if (player) {
-    currentTime.value = player.currentTime;
-  }
-};
 
 // Question interaction methods
 const selectQuestionAnswer = (questionId: string, answerId: string): void => {
@@ -272,27 +149,6 @@ const upgradeToPro = (): void => {
   navigateTo('/pricing');
 };
 
-
-
-// Lifecycle hooks
-onMounted(async () => {
-  // Set up continuous time tracking
-  const updateTime = (): void => {
-    if (audioPlayer.value && !audioPlayer.value.paused) {
-      currentTime.value = audioPlayer.value.currentTime;
-    }
-    requestAnimationFrame(updateTime);
-  };
-  updateTime();
-
-  // Load podcast data if user is Pro
-  if (user.subscription?.isPro) {
-    await Promise.all([
-      loadTodaysPodcast(),
-      loadPodcastHistory()
-    ]);
-  }
-});
 </script>
 
 <template>
@@ -321,12 +177,7 @@ onMounted(async () => {
 
         <!-- Header -->
         <div class="text-center">
-          <div class="inline-flex items-center gap-3 mb-4">
-            <img src="/favicon.svg" class="w-10 h-10" alt="sbf trainer icon">
-            <h1 class="text-4xl font-bold bg-gradient-to-r from-teal-400 to-teal-400 bg-clip-text text-transparent">
-              SBF Trainer
-            </h1>
-          </div>
+          <Logo/>
           <p class="text-slate-400 text-lg mb-2">Täglicher Prüfungsbegleiter</p>
           <p class="text-slate-500 text-sm">{{ formatDate(new Date()) }}</p>
         </div>
@@ -361,8 +212,9 @@ onMounted(async () => {
           </div>
         </div>
 
+
         <!-- Loading State -->
-        <div v-if="loading || generating" class="mt-8 relative">
+        <div v-if="loadingToday || generating" class="mt-8 relative">
           <div
               class="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl blur opacity-30 animate-pulse"/>
           <div class="relative bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
@@ -435,9 +287,8 @@ onMounted(async () => {
           </div>
         </div>
 
-
-        <Card v-else-if="todaysPodcast" class="mt-8" variant="teal" padding="narrow">
-          <template #header>
+        <CollapsibleCard v-else-if="todaysPodcast " class="mt-8" default-open>
+          <template #trigger>
             <CardHeader
                 variant="teal"
                 :title=" todaysPodcast.script.title"
@@ -445,137 +296,16 @@ onMounted(async () => {
             >
               <template #icon>
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                      stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M15.536 11.293l-1.414 1.414a8 8 0 01-11.313 0l6.364-6.364a8 8 0 0111.313 11.313l-1.414-1.414"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
                 </svg>
               </template>
             </CardHeader>
+
           </template>
 
+          <AudioPlayer :audio="todaysPodcast.audioUrl"/>
 
-          <!-- Custom Audio Player -->
-          <div class="py-6">
-            <!-- Hidden Audio Element -->
-            <audio
-                ref="audioPlayer"
-                :src="todaysPodcast.audioUrl"
-                style="display: none;"
-                @play="onPlay"
-                @pause="onPause"
-                @ended="onEnded"
-                @loadedmetadata="onLoadedMetadata"
-                @timeupdate="onTimeUpdate"
-            >
-              Ihr Browser unterstützt das Audio-Element nicht.
-            </audio>
-
-            <!-- Custom Progress Bar -->
-            <div class="space-y-2 mb-6">
-              <div class="flex justify-between text-sm text-slate-400">
-                <span>{{ formatTime(currentTime) }}</span>
-                <span>{{ formatTime(duration) }}</span>
-              </div>
-              <div
-                  class="w-full bg-slate-700 rounded-full h-2 cursor-pointer"
-                  @click="seekToPosition"
-              >
-                <div
-                    class="bg-gradient-to-r from-teal-500 to-teal-600 h-2 rounded-full transition-all duration-100"
-                    :style="{ width: progressPercentage + '%' }"
-                />
-              </div>
-            </div>
-
-            <!-- Playback Controls -->
-            <div class="flex items-center justify-center space-x-6 mb-6">
-              <button
-                  class="p-3 text-slate-400 hover:text-teal-400 transition-colors rounded-full hover:bg-slate-700/50"
-                  title="10 Sekunden zurück"
-                  @click="seekBackward">
-                <Icon name="lucide:fast-forward" class="rotate-180"/>
-              </button>
-
-              <button
-                  class="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/25 transform hover:scale-105"
-                  :title="isPlaying ? 'Pausieren' : 'Abspielen'"
-                  @click="togglePlayPause"
-              >
-                <Icon v-if="!isPlaying" name="lucide:play" size="20"/>
-                <Icon v-else name="lucide:pause" size="20"/>
-              </button>
-
-              <button
-                  class="p-3 text-slate-400 hover:text-teal-400 transition-colors rounded-full hover:bg-slate-700/50"
-                  title="10 Sekunden vor"
-                  @click="seekForward">
-                <Icon name="lucide:fast-forward"/>
-              </button>
-            </div>
-
-            <!-- Volume and Speed Controls -->
-            <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8">
-              <!-- Volume Control -->
-              <div class="flex items-center space-x-3">
-                <button
-                    class="p-2 text-slate-400 hover:text-teal-400 transition-colors"
-                    :title="isMuted ? 'Ton einschalten' : 'Stumm schalten'"
-                    @click="toggleMute"
-                >
-                  <svg
-                      v-if="isMuted || volume === 0" class="w-5 h-5" fill="none" stroke="currentColor"
-                      viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
-                  </svg>
-                  <svg v-else-if="volume < 0.5" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15.536 8.464a5 5 0 010 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
-                  </svg>
-                  <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
-                  </svg>
-                </button>
-
-                <div class="flex items-center space-x-2">
-                  <input
-                      v-model="volume"
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      class="w-20 h-2 bg-slate-600 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 slider"
-                      @input="updateVolume"
-                  >
-                  <span class="text-xs text-slate-400 w-10 text-right">{{ Math.round(volume * 100) }}%</span>
-                </div>
-              </div>
-
-              <!-- Playback Speed -->
-              <div class="flex items-center space-x-2">
-                <span class="text-xs text-slate-400">Speed:</span>
-                <select
-                    v-model="playbackSpeed"
-                    class="bg-slate-700/50 border border-slate-600 rounded px-2 py-1 text-slate-300 text-xs focus:outline-none focus:border-teal-500"
-                    @change="changePlaybackSpeed"
-                >
-                  <option value="0.75">0.75x</option>
-                  <option value="1">1x</option>
-                  <option value="1.25">1.25x</option>
-                  <option value="1.5">1.5x</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Script Preview -->
           <div class="border-t border-slate-700/50 pt-6">
             <button
                 class="flex items-center space-x-2 text-teal-400 hover:text-teal-300 transition-colors"
@@ -619,7 +349,7 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-        </Card>
+        </CollapsibleCard>
 
 
         <!-- Generate Button -->
@@ -652,9 +382,9 @@ onMounted(async () => {
 
         <!-- Podcast Questions Section -->
 
-        <Card v-if="podcastQuestions && podcastQuestions.length" class="mt-8" padding="narrow">
+        <CollapsibleCard v-if="podcastQuestions && podcastQuestions.length" class="mt-8" padding="narrow">
 
-          <template #header>
+          <template #trigger>
             <CardHeader
                 variant="blue"
                 title="Fragen aus dieser Episode"
@@ -687,192 +417,23 @@ onMounted(async () => {
 
           <div class="space-y-6">
             <Card
-                v-for="(question, questionIndex) in podcastQuestions"
+                v-for="(question) in podcastQuestions"
                 :key="question.id"
                 variant="blue"
                 padding="narrow"
             >
-              <!-- Question Header -->
-              <div class="flex flex-col justify-start">
-                <div class="inline-flex items-center gap-2 mb-4">
-                      <span
-                          class="px-3 py-1 text-xs font-medium capitalize bg-teal-500/20 text-teal-300 rounded-full border border-teal-500/30">
-                        {{ question.metadata?.category || 'Nautik' }}
-                      </span>
-                  <span class="text-xs text-slate-400">Frage {{ questionIndex + 1 }}</span>
-                </div>
-                <h4 class="text-xl font-semibold text-slate-100 leading-snug text-pretty">
-                  {{ question.question }}
-                </h4>
-              </div>
-
-              <!-- Image Display -->
-              <div v-if="question.images?.length" class="mt-4 flex justify-center">
-                <div class="bg-white rounded-lg p-4 shadow-lg max-w-xs">
-                  <div class="flex gap-2">
-                    <img
-                        v-for="(img, index) in question.images"
-                        :key="index"
-                        :src="img"
-                        :alt="`${question.question} - Bild ${index + 1}`"
-                        :class="question.images.length === 1 ? 'w-full' : 'flex-1'"
-                        class="h-auto rounded max-h-48 object-contain"
-                    >
-                  </div>
-                </div>
-              </div>
-
-              <!-- Answer Grid -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <button
-                    v-for="(answer, answerIndex) in question.answers"
-                    :key="answer.id"
-                    :class="[
-                          'group relative p-4 text-left rounded-xl transition-colors duration-300 touch-manipulation',
-                          {
-                            // Normal state
-                            'bg-slate-700/50 hover:bg-teal-500/20 border border-slate-600/50 hover:border-teal-500/50 hover:shadow-lg': !questionAnswers[question.id],
-                            // Selected answer when not yet answered
-                            'bg-teal-500/20 border border-teal-500/50': !questionAnswers[question.id] && selectedAnswers[question.id] === answer.id,
-                            // Correct answer highlight (after answering)
-                            'bg-emerald-500/20 border border-emerald-500/50 shadow-lg shadow-emerald-500/20': questionAnswers[question.id] && answer.id === question.correctAnswer,
-                            // Wrong selected answer highlight (after answering)
-                            'bg-red-500/20 border border-red-500/50 shadow-lg shadow-red-500/20': questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer,
-                            // Other answers when answered (dimmed)
-                            'bg-slate-700/30 border border-slate-600/30 opacity-70': questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id && answer.id !== question.correctAnswer
-                          }
-                        ]"
-                    style="-webkit-tap-highlight-color: transparent;"
-                    :disabled="questionAnswers[question.id]"
-                    @click="selectQuestionAnswer(question.id, answer.id)"
-                >
-                      <span class="flex items-center gap-3">
-                        <span
-                            class="w-8 h-8 shrink-0 bg-gradient-to-r rounded-lg flex items-center justify-center font-bold text-sm"
-                            :class="{
-                              // Normal state
-                              'from-slate-600 to-slate-700 text-slate-300 group-hover:from-teal-500 group-hover:to-teal-600 group-hover:text-white': !questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id,
-                              // Selected (not answered)
-                              'from-teal-500 to-teal-600 text-white': !questionAnswers[question.id] && selectedAnswers[question.id] === answer.id,
-                              // Correct answer (answered)
-                              'from-emerald-500 to-emerald-600 text-white': questionAnswers[question.id] && answer.id === question.correctAnswer,
-                              // Wrong selected answer (answered)
-                              'from-red-500 to-red-600 text-white': questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer,
-                              // Other answers (answered)
-                              'from-slate-600 to-slate-700 text-slate-400': questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id && answer.id !== question.correctAnswer
-                            }"
-                        >
-                          {{ String.fromCharCode(65 + answerIndex) }}
-
-                          <!-- Correct/Wrong icons -->
-                          <span
-                              v-if="questionAnswers[question.id] && answer.id === question.correctAnswer"
-                              class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                            <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                            </svg>
-                          </span>
-
-                          <span
-                              v-if="questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer"
-                              class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                            <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                  stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                  d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                          </span>
-                        </span>
-
-                        <span
-                            class="text-sm leading-relaxed"
-                            :class="{
-                              'text-slate-200': !questionAnswers[question.id],
-                              'text-emerald-100 font-medium': questionAnswers[question.id] && answer.id === question.correctAnswer,
-                              'text-red-100': questionAnswers[question.id] && selectedAnswers[question.id] === answer.id && answer.id !== question.correctAnswer,
-                              'text-slate-400': questionAnswers[question.id] && selectedAnswers[question.id] !== answer.id && answer.id !== question.correctAnswer
-                            }"
-                        >
-                          {{ answer.text }}
-                        </span>
-                      </span>
-
-                  <!-- Hover overlay -->
-                  <span
-                      v-if="!questionAnswers[question.id]"
-                      class="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-teal-600/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  />
-                </button>
-              </div>
-
-              <!-- Explanation (shown after answering) -->
-              <div
-                  v-if="questionAnswers[question.id]"
-                  class="mt-6 p-6 rounded-xl backdrop-blur-sm animate-slide-up"
-                  :class="{
-                        'bg-emerald-500/10 border border-emerald-500/30': selectedAnswers[question.id] === question.correctAnswer,
-                        'bg-red-500/10 border border-red-500/30': selectedAnswers[question.id] !== question.correctAnswer
-                      }"
-              >
-                <div class="flex items-start gap-4">
-                  <div
-                      class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      :class="{
-                          'bg-emerald-500/20': selectedAnswers[question.id] === question.correctAnswer,
-                          'bg-red-500/20': selectedAnswers[question.id] !== question.correctAnswer
-                        }"
-                  >
-                    <svg
-                        class="w-5 h-5"
-                        :class="{
-                            'text-emerald-400': selectedAnswers[question.id] === question.correctAnswer,
-                            'text-red-400': selectedAnswers[question.id] !== question.correctAnswer
-                          }"
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path
-                          v-if="selectedAnswers[question.id] === question.correctAnswer"
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M5 13l4 4L19 7"
-                      />
-                      <path
-                          v-else
-                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h5
-                        class="font-semibold mb-2"
-                        :class="{
-                            'text-emerald-300': selectedAnswers[question.id] === question.correctAnswer,
-                            'text-red-300': selectedAnswers[question.id] !== question.correctAnswer
-                          }"
-                    >
-                      {{
-                        selectedAnswers[question.id] === question.correctAnswer ? 'Richtig!' : 'Nicht ganz richtig'
-                      }}
-                    </h5>
-                    <p class="text-slate-200 text-sm leading-relaxed mb-3">{{ question.explanation }}</p>
-                    <div
-                        v-if="selectedAnswers[question.id] !== question.correctAnswer"
-                        class="flex items-center gap-2 text-xs">
-                          <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded">
-                            Richtige Antwort: {{
-                              String.fromCharCode(65 + question.answers.findIndex(a => a.id === question.correctAnswer))
-                            }}
-                          </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <QuestionContent
+                  :wrap="false"
+                  :question="question" show-category mode="training"
+                  :selected="selectedAnswers[question.id]"
+                  :show-explanation="questionAnswers[question.id]"
+                  @click:answer="(answerId) => selectQuestionAnswer(question.id, answerId)"/>
             </Card>
           </div>
-        </Card>
+        </CollapsibleCard>
 
-        <Card v-if="podcastKnot" class="mt-8" variant="orange">
-          <template #header>
+        <CollapsibleCard v-if="podcastKnot" class="mt-8" variant="orange">
+          <template #trigger>
             <CardHeader
                 variant="orange"
                 title="Knoten des Tages"
@@ -915,7 +476,7 @@ onMounted(async () => {
                       :src="podcastKnot.image"
                       :alt="`${podcastKnot.name} Knoten`"
                       class="max-w-full h-auto max-h-48 rounded-lg"
-                  />
+                  >
                 </div>
                 <p class="text-slate-400 text-sm mt-2">{{ podcastKnot.name }}</p>
               </div>
@@ -939,8 +500,9 @@ onMounted(async () => {
                   <div
                       class="w-10 h-10 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      <path
+                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                   </div>
                   <div>
@@ -956,8 +518,9 @@ onMounted(async () => {
                   <div
                       class="w-10 h-10 bg-gradient-to-r from-blue-500/20 to-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      <path
+                          stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                   </div>
                   <div>
@@ -974,8 +537,9 @@ onMounted(async () => {
                 <div
                     class="w-10 h-10 bg-gradient-to-r from-orange-500/20 to-amber-600/20 rounded-lg flex items-center justify-center">
                   <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    <path
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                   </svg>
                 </div>
                 <h5 class="font-semibold text-orange-300 text-lg">Anleitung</h5>
@@ -1010,8 +574,9 @@ onMounted(async () => {
               <div
                   class="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                  <path
+                      stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                 </svg>
               </div>
               <p class="text-orange-200 text-sm font-medium">
@@ -1022,52 +587,17 @@ onMounted(async () => {
               </p>
             </div>
           </div>
-        </Card>
+        </CollapsibleCard>
+
+
+        <ExamSimulator v-if="todaysExam" :exam="todaysExam"/>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Custom volume slider styling */
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #14b8a6, #0d9488);
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
 
-.slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #14b8a6, #0d9488);
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.slider::-webkit-slider-track {
-  background: linear-gradient(to right, #14b8a6 0%, #14b8a6 var(--volume-percent, 100%), #475569 var(--volume-percent, 100%), #475569 100%);
-  height: 6px;
-  border-radius: 3px;
-}
-
-.slider::-moz-range-track {
-  background: #475569;
-  height: 6px;
-  border-radius: 3px;
-}
-
-.slider::-moz-range-progress {
-  background: #14b8a6;
-  height: 6px;
-  border-radius: 3px;
-}
 
 /* Wave animation */
 @keyframes wave {
@@ -1095,21 +625,5 @@ onMounted(async () => {
 
 .animate-bounce {
   animation: gentle-bounce 2s ease-in-out infinite;
-}
-
-/* Slide up animation */
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
 }
 </style>

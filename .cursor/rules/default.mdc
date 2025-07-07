@@ -1,0 +1,7 @@
+---
+description: Default rules for all projects
+globs:
+alwaysApply: true
+---
+Use fewer comments,
+Be concise in your response

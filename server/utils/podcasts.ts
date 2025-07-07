@@ -20,7 +20,8 @@ export async function checkExistingPodcast(userId: string, date: string) {
                 audioUrl: audioBlob.url,
                 script: scriptData.script,
                 questions: scriptData.questions,
-                knot: scriptData.knot
+                knot: scriptData.knot,
+                exam: scriptData.exam
             };
         }
 

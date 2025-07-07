@@ -9,6 +9,8 @@ import {getAllQuestions, getRandomQuestionsFromFile} from "~~/server/utils/quiz"
 
 import {checkExistingPodcast} from "~~/server/utils/podcasts";
 import {put} from "@vercel/blob";
+import {createExamSheet, shuffleExamSheet} from "~~/server/utils/exam";
+import type {Question} from "~~/server/assets/data/questions";
 
 // Updated schema with correct field names
 const podcastContentSchema = z.object({
@@ -328,6 +330,40 @@ async function generateAudio(script: PodcastContent): Promise<{
 }
 
 
+async function generateRandomExamSheet(questions: Question[]): Promise<ExamSheet & { questions: ShuffledQuestion[] }> {
+    try {
+        const randomSheetNumber = Math.floor(Math.random() * 15) + 1;
+
+        consola.info(`Generating random exam sheet #${randomSheetNumber}`);
+
+        // Filter basic and sea questions from the already loaded questions
+        const basicQuestions = questions.filter(q => {
+            const questionNum = parseInt(q.id.replace('sbf-', ''));
+            return questionNum <= 72;
+        });
+
+        const seaQuestions = questions.filter(q => {
+            const questionNum = parseInt(q.id.replace('sbf-', ''));
+            return questionNum > 72 && questionNum <= 285;
+        });
+
+        // Create the official exam sheet
+        const examSheet = createExamSheet(randomSheetNumber, basicQuestions, seaQuestions);
+
+        // Shuffle the answers to simulate real exam conditions
+        const shuffledExamSheet = shuffleExamSheet(examSheet);
+
+        consola.success(`Generated exam sheet #${randomSheetNumber} with ${shuffledExamSheet.questions.length} questions`);
+
+        return shuffledExamSheet;
+
+    } catch (error) {
+        consola.error('Error generating random exam sheet:', error);
+        throw new Error(`Failed to generate exam sheet: ${error}`);
+    }
+}
+
+
 // Main daily podcast generation endpoint
 export default defineEventHandler(async (event) => {
 
@@ -383,7 +419,7 @@ export default defineEventHandler(async (event) => {
         consola.success(`Daily podcast audio done...`);
 
         const usedQuestionIds = script.questionsUsed
-        const allQuestions = await getAllQuestions()
+        const allQuestions = getAllQuestions()
         const usedQuestions = allQuestions.filter((q) => usedQuestionIds.includes(q.id));
 
         // Upload audio to Vercel Blob
@@ -397,15 +433,18 @@ export default defineEventHandler(async (event) => {
             contentType: audio.mimeType || 'audio/mpeg'
         });
 
+        const exam = await generateRandomExamSheet(allQuestions)
 
         const scriptData = {
             script: {...script, questionsUsed: usedQuestionIds},
             questions: usedQuestions,
             knot: script.knotUsed,
+            exam,
             generatedAt: new Date().toISOString()
         };
 
         const scriptBlobPath = `podcasts/${userId}/${today}-script.json`;
+
         await put(scriptBlobPath, JSON.stringify(scriptData), {
             access: 'public',
             contentType: 'application/json'
@@ -424,6 +463,7 @@ export default defineEventHandler(async (event) => {
             },
             questions: usedQuestions,
             knot: script.knotUsed,
+            exam
         };
 
         return podcastResponseSchema.parse(response)
