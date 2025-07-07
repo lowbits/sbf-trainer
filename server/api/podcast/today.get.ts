@@ -18,6 +18,8 @@ export default defineEventHandler(async (event) => {
 
     const existingPodcast = await checkExistingPodcast(userId, today);
 
+    console.log(existingPodcast);
+
     if (existingPodcast.exists) {
         const cachedResponse = {
             success: true,
@@ -27,7 +29,8 @@ export default defineEventHandler(async (event) => {
                 cached: true
             },
             questions: existingPodcast.questions,
-            knot: existingPodcast.knot
+            knot: existingPodcast.knot,
+            exam: existingPodcast.exam,
         };
 
         return podcastResponseSchema.parse(cachedResponse);

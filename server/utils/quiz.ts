@@ -39,6 +39,6 @@ export async function getRandomQuestionsFromFile(
     return shuffled.slice(0, count)
 }
 
-export const getAllQuestions = async () => {
-    return [...basicQuestions, ...seaQuestions]
+export const getAllQuestions = (): Question[] => {
+    return [...basicQuestions, ...seaQuestions] as Question[]
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 interface Props {
-  variant?: 'default' | 'orange' | 'teal' | 'blue' | 'green'
+  variant?: 'default' | 'orange' | 'teal' | 'blue' | 'green' | 'purple'
   title?: string
   subtitle?: string
   icon?: boolean
@@ -36,6 +36,11 @@ const variantClasses = {
     gradient: 'from-emerald-500 to-emerald-600',
     text: 'text-white',
     subtitle: 'text-emerald-100'
+  },
+  purple: {                                    // ADD THIS
+    gradient: 'from-purple-500 to-purple-600',
+    text: 'text-white',
+    subtitle: 'text-purple-100'
   }
 }
 </script>

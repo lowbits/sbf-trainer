@@ -1,9 +1,8 @@
 <!-- components/ui/cards/Card.vue -->
 <script setup lang="ts">
-import {paddings} from "@unocss/preset-mini/rules";
 
 interface Props {
-  variant?: 'default' | 'glow' | 'orange' | 'teal' | 'blue' | 'green'
+  variant?: 'default' | 'glow' | 'orange' | 'teal' | 'blue' | 'green' |'purple'
   padding?: 'narrow' | 'default'
   glow?: boolean
 }
@@ -19,7 +18,8 @@ const glowClasses = {
   orange: 'from-orange-500 to-amber-600 opacity-30',
   teal: 'from-teal-500 to-teal-600 opacity-30',
   blue: 'from-blue-500 to-blue-600 opacity-30',
-  green: 'from-emerald-500 to-emerald-600 opacity-30'
+  green: 'from-emerald-500 to-emerald-600 opacity-30',
+  purple: 'from-purple-500 to-purple-600'
 }
 </script>
 

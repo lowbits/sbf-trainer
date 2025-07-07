@@ -48,6 +48,14 @@ interface PodcastHistoryItem {
   duration: string;
   questionsCount: number;
 }
+interface PodcastResponse {
+  success: boolean;
+  podcast: PodcastData;
+  questions: Question[];
+  knot?: Knot;
+  exam?: ExamSheet; // NEW: Include exam in response
+}
+
 
 // Mock user data
 const user = reactive<User>({
@@ -68,6 +76,8 @@ const selectedAnswers = ref<Record<string, string>>({});
 const questionAnswers = ref<Record<string, boolean>>({});
 
 const podcastKnot = ref<Knot>();
+const todaysExam = ref<ExamSheet | null>(null);
+const showExamPreview = ref<boolean>(false);
 
 // Audio player state
 const audioPlayer = ref<HTMLAudioElement | null>(null);
@@ -84,6 +94,21 @@ const previousVolume = ref<number>(1);
 // Computed
 const progressPercentage = computed<number>(() => {
   return duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0;
+});
+
+const examStats = computed(() => {
+  if (!todaysExam.value) return null;
+
+  const basicQuestions = todaysExam.value.questions.filter(q => q.originalQuestionNumber <= 72);
+  const specificQuestions = todaysExam.value.questions.filter(q => q.originalQuestionNumber > 72);
+
+  return {
+    total: todaysExam.value.questions.length,
+    basic: basicQuestions.length,
+    specific: specificQuestions.length,
+    timeLimit: todaysExam.value.metadata.timeLimit,
+    passingScore: todaysExam.value.metadata.passingScore
+  };
 });
 
 // Utility methods
@@ -108,17 +133,20 @@ const generatePodcast = async (): Promise<void> => {
   error.value = null;
 
   try {
-    const result = await $fetch<{
-      podcast: PodcastData;
-      questions: Question[];
-      knot?: Knot;
-    }>('/api/podcast/generate', {
+    const result = await $fetch<PodcastResponse>('/api/podcast/generate', {
       method: 'POST'
     });
 
     todaysPodcast.value = result.podcast;
     podcastQuestions.value = result.questions;
     podcastKnot.value = result.knot
+
+    console.log(result);
+
+    // NEW: Handle exam data
+    if (result.exam) {
+      todaysExam.value = result.exam;
+    }
 
     // Reset question states
     selectedAnswers.value = {};
@@ -135,16 +163,15 @@ const generatePodcast = async (): Promise<void> => {
 const loadTodaysPodcast = async (): Promise<void> => {
   loading.value = true;
   try {
-    const result = await $fetch<{
-      podcast: PodcastData;
-      questions: any[];
-      knot: Knot;
-    }>('/api/podcast/today');
+    const result = await $fetch<PodcastResponse>('/api/podcast/today');
 
     if (result) {
       todaysPodcast.value = result.podcast;
       podcastQuestions.value = result.questions;
       podcastKnot.value = result.knot;
+      todaysExam.value = result.exam;
+
+
 
       // Reset question states
       selectedAnswers.value = {};
@@ -272,6 +299,18 @@ const upgradeToPro = (): void => {
   navigateTo('/pricing');
 };
 
+
+// NEW: Exam navigation methods
+const startExam = (): void => {
+  if (todaysExam.value) {
+    // Navigate to exam page with the exam ID
+    navigateTo(`/exam/${todaysExam.value.id}`);
+  }
+};
+
+const previewExam = (): void => {
+  showExamPreview.value = !showExamPreview.value;
+};
 
 
 // Lifecycle hooks
@@ -1020,6 +1059,115 @@ onMounted(async () => {
           Folge den {{ podcastKnot.steps.length }} Schritten oben.
         </span>
               </p>
+            </div>
+          </div>
+        </Card>
+
+
+        <Card v-if="todaysExam" class="mt-8" variant="purple"  padding="narrow">
+          <template #header>
+            <CardHeader
+                variant="purple"
+                :title="todaysExam.title"
+                :subtitle="`${examStats?.total} Fragen • ${examStats?.timeLimit} Minuten`"
+            >
+              <template #icon>
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </template>
+            </CardHeader>
+          </template>
+
+          <div class="py-6 space-y-6">
+            <!-- Exam Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                <div class="text-2xl font-bold text-purple-400">{{ examStats?.total }}</div>
+                <div class="text-xs text-slate-400">Fragen</div>
+              </div>
+              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                <div class="text-2xl font-bold text-purple-400">{{ examStats?.basic }}</div>
+                <div class="text-xs text-slate-400">Basis</div>
+              </div>
+              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                <div class="text-2xl font-bold text-purple-400">{{ examStats?.specific }}</div>
+                <div class="text-xs text-slate-400">Spezifisch</div>
+              </div>
+              <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                <div class="text-2xl font-bold text-purple-400">{{ examStats?.timeLimit }}</div>
+                <div class="text-xs text-slate-400">Minuten</div>
+              </div>
+            </div>
+
+            <!-- Exam Description -->
+            <div class="p-4 bg-slate-700/20 rounded-lg">
+              <p class="text-slate-300 text-sm">{{ todaysExam.description }}</p>
+            </div>
+
+            <!-- Passing Requirements -->
+            <div class="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+              <h4 class="font-semibold text-purple-300 mb-3">Bestehensvoraussetzungen</h4>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Basisfragen:</span>
+                  <span class="text-purple-300 font-medium">{{ examStats?.passingScore.basic }}/{{ examStats?.basic }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Spezifische:</span>
+                  <span class="text-purple-300 font-medium">{{ examStats?.passingScore.specific }}/{{ examStats?.specific }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Gesamt:</span>
+                  <span class="text-purple-300 font-medium">{{ examStats?.passingScore.total }}/{{ examStats?.total }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4">
+              <button
+                  class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 transform hover:scale-105"
+                  @click="startExam">
+                Prüfung starten
+              </button>
+              <button
+                  class="px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600 text-slate-300 rounded-xl font-medium transition-all duration-300"
+                  @click="previewExam">
+                {{ showExamPreview ? 'Vorschau ausblenden' : 'Fragen-Vorschau' }}
+              </button>
+            </div>
+
+            <!-- Exam Preview -->
+            <div v-if="showExamPreview" class="border-t border-slate-700/50 pt-6">
+              <h4 class="font-semibold text-slate-200 mb-4">Fragen-Überblick</h4>
+              <div class="space-y-3 max-h-64 overflow-y-auto">
+                <div
+                    v-for="(question, index) in todaysExam.questions.slice(0, 5)"
+                    :key="question.id"
+                    class="p-3 bg-slate-700/20 rounded-lg">
+                  <div class="flex items-start gap-3">
+                    <span class="w-6 h-6 bg-purple-500/20 text-purple-300 rounded text-xs font-medium flex items-center justify-center flex-shrink-0">
+                      {{ index + 1 }}
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-slate-300 text-sm line-clamp-2">{{ question.question }}</p>
+                      <div class="flex items-center gap-2 mt-2">
+                        <span class="px-2 py-1 text-xs bg-slate-600/50 text-slate-400 rounded">
+                          {{ question.originalQuestionNumber <= 72 ? 'Basis' : 'Spezifisch' }}
+                        </span>
+                        <span v-if="question.images?.length" class="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded">
+                          📸 Mit Bild
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="todaysExam.questions.length > 5" class="text-center text-slate-400 text-sm">
+                  ... und {{ todaysExam.questions.length - 5 }} weitere Fragen
+                </div>
+              </div>
             </div>
           </div>
         </Card>
