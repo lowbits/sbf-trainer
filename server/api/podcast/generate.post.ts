@@ -1,6 +1,5 @@
-// server/api/podcast/generate-daily.ts
-import {experimental_generateSpeech, generateObject} from 'ai';
-import {createOpenAI, openai} from '@ai-sdk/openai';
+import {generateObject} from 'ai';
+import {createOpenAI} from '@ai-sdk/openai';
 import {z} from 'zod';
 import {consola} from "consola";
 import {generatePodcastSchema, podcastResponseSchema, userIdSchema} from "~~/server/utils/schema";
@@ -11,6 +10,7 @@ import {checkExistingPodcast} from "~~/server/utils/podcasts";
 import {put} from "@vercel/blob";
 import {createExamSheet, shuffleExamSheet} from "~~/server/utils/exam";
 import type {Question} from "~~/server/assets/data/questions";
+import {TextToSpeechService} from "~~/server/services/textToSpeechService";
 
 // Updated schema with correct field names
 const podcastContentSchema = z.object({
@@ -281,7 +281,6 @@ async function generateAudio(script: PodcastContent): Promise<{
     audio: Uint8Array;
     format?: string;
     mimeType?: string;
-    warnings: string[];
 }> {
     try {
         // Combine all script parts into one text (same as before)
@@ -309,20 +308,7 @@ async function generateAudio(script: PodcastContent): Promise<{
 
         consola.info('Generating audio with processed script...');
 
-        const response = await experimental_generateSpeech({
-            model: openai.speech('tts-1-hd'),
-            voice: 'nova',
-            text: fullScript,
-            speed: 0.9
-        });
-
-        return {
-            audio: response.audio.uint8Array,
-            format: response.audio.format,
-            mimeType: response.audio.mimeType,
-            warnings: response.warnings || []
-        };
-
+        return new TextToSpeechService().generate(fullScript);
     } catch (error) {
         console.error('Error generating audio:', error);
         throw error;

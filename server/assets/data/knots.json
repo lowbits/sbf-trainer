@@ -2,7 +2,7 @@
   {
     "name": "Achtknoten",
     "englishName": "Figure Eight Knot",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/9/91/Endacht.jpg",
+    "image": "/img/knots/achtknoten.png",
     "usage": "Stopper-Knoten am Seilende",
     "explanation": "Der Achtknoten wird als Stopper-Knoten verwendet, um zu verhindern, dass ein Seil durch einen Block oder eine Öse rutscht. Er ist größer als der einfache Knoten und lässt sich auch unter Last wieder lösen.",
     "steps": [
@@ -16,7 +16,7 @@
   {
     "name": "Kreuzknoten",
     "englishName": "Reef Knot / Square Knot",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Reef_knot.svg/2880px-Reef_knot.svg.png",
+    "image": "/img/knots/kreuzknoten.png",
     "usage": "Verbinden zweier gleichstarker Seile",
     "explanation": "Der Kreuzknoten dient zum Verbinden zweier gleichstarker Seile. Wichtig: 'Rechts über links, links über rechts' - sonst wird es ein Diebesknoten der sich löst!",
     "steps": [
@@ -30,7 +30,7 @@
   {
     "name": "Palstek",
     "englishName": "Bowline",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Bowline.svg/2880px-Bowline.svg.png",
+    "image": "/img/knots/palstek.png",
     "usage": "Feste Schlaufe, die sich unter Last nicht zuzieht",
     "explanation": "Der Palstek ist einer der wichtigsten Knoten im Segelsport. Er bildet eine feste Schlaufe, die sich unter Last nicht zuzieht und dennoch leicht zu lösen ist. Merksatz: 'Das Kaninchen kommt aus dem Loch, um den Baum und zurück ins Loch.'",
     "steps": [
@@ -45,7 +45,7 @@
   {
     "name": "Einfacher Schotstek",
     "englishName": "Simple Sheet Bend",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Schootsteek.svg/2880px-Schootsteek.svg.png",
+    "image": "/img/knots/schotstek.png",
     "usage": "Verbinden zweier unterschiedlich starker Seile",
     "explanation": "Der einfache Schotstek verbindet zwei Seile unterschiedlicher Stärke. Das dickere Seil wird zur Schlaufe gelegt, das dünnere durchgesteckt und um beide Teile der Schlaufe geführt.",
     "steps": [
@@ -60,7 +60,7 @@
   {
     "name": "Doppelter Schotstek",
     "englishName": "Double Sheet Bend",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/e/ee/Doppelter_Schotstek.jpg",
+    "image": "/img/knots/doppelter-schotstek.png",
     "usage": "Sicherere Verbindung sehr unterschiedlicher Seile",
     "explanation": "Der doppelte Schotstek ist eine verstärkte Version des einfachen Schotsteks. Er hält besser bei sehr unterschiedlichen Seilstärken oder glatten Seilen.",
     "steps": [
@@ -74,7 +74,7 @@
   {
     "name": "Stopperstek",
     "englishName": "Stopper Hitch",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Stopperstek.jpg",
+    "image": "/img/knots/stopperstek.png",
     "usage": "Schnelles Belegen eines Seils unter Last",
     "explanation": "Der Stopperstek wird verwendet, um ein Seil unter Last schnell zu belegen. Er kann auch unter Last gelöst werden und ist daher sehr praktisch.",
     "steps": [
@@ -88,7 +88,7 @@
   {
     "name": "Webleinstek",
     "englishName": "Clove Hitch",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Barb._Webeleinenstek01.svg/2560px-Barb._Webeleinenstek01.svg.png",
+    "image": "/img/knots/webleinstek.png",
     "usage": "Festmachen an Pollern oder Ringen",
     "explanation": "Der Webleinstek ist ein einfacher Knoten zum Festmachen an Pollern oder Ringen. Er hält bei gleichmäßiger Belastung gut, kann aber bei wechselnder Belastung nachgeben.",
     "steps": [
@@ -103,7 +103,7 @@
   {
     "name": "Webleinstek auf Slip",
     "englishName": "Slipped Clove Hitch",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/0/04/Webeleinenstek-auf-Slip.svg",
+    "image": "/img/knots/webleinstek-mit-slip-v2.png",
     "usage": "Schnell lösbarer Webleinstek",
     "explanation": "Der Webleinstek auf Slip ist die schnell lösbare Version des Webleinsteks. Durch einen Zug am Ende kann er sofort gelöst werden.",
     "steps": [
@@ -117,7 +117,7 @@
   {
     "name": "Rundtörn mit zwei halben Schlägen",
     "englishName": "Round Turn and Two Half Hitches",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/0/07/Round_turn_and_two_half_hitches.png",
+    "image": "/img/knots/rundtoern-mit-zwei-halben-schlaegen.png",
     "usage": "Sicheres Festmachen mit hoher Haltekraft",
     "explanation": "Dieser Knoten bietet hohe Sicherheit und Haltekraft. Der Rundtörn nimmt den Zug auf, die halben Schläge sichern das Ende.",
     "steps": [
@@ -131,7 +131,7 @@
   {
     "name": "Belegen einer Klampe mit Kopfschlag",
     "englishName": "Cleat Hitch with Locking Turn",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/P%C5%99ek%C5%99%C3%AD%C5%BEen%C3%BD_%C3%BAvaz%2C_Techmania%2C_Plze%C5%88_01.jpg/2560px-P%C5%99ek%C5%99%C3%AD%C5%BEen%C3%BD_%C3%BAvaz%2C_Techmania%2C_Plze%C5%88_01.jpg",
+    "image": "/img/knots/belegen-einer-klampe-v3.png",
     "usage": "Professionelles Belegen von Klampen",
     "explanation": "Die richtige Art, eine Klampe zu belegen. Der Kopfschlag am Ende verhindert das selbstständige Lösen, kann aber schnell gelöst werden.",
     "steps": [

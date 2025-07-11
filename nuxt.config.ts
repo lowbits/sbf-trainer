@@ -8,6 +8,7 @@ export default defineNuxtConfig({
     modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@vueuse/nuxt', '@vite-pwa/nuxt', '@nuxtjs/seo', '@nuxt/icon'],
     runtimeConfig: {
         openaiApiKey: process.env.OPENAI_API_KEY,
+        elevenLabsApiKey: process.env.ELEVENLABS_API_KEY,
     },
     app: {
         head: {
@@ -33,6 +34,12 @@ export default defineNuxtConfig({
     },
     ogImage: {
         enabled: true,
+    },
+
+    nitro: {
+        prerender: {
+            routes: ['/', '/welcome'],
+        },
     },
     pwa: {
         manifest: {
@@ -75,6 +82,15 @@ export default defineNuxtConfig({
                     purpose: 'any'
                 }
             ]
+        },
+        workbox: {
+            globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+        },
+        devOptions: {
+            enabled: true,
+            suppressWarnings: false,
+            navigateFallbackAllowlist: [/^\/$/],
+            type: 'module',
         },
     },
     icon: {
